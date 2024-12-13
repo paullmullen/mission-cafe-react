@@ -10,6 +10,7 @@
     "ajv": "^8.17.1",
     "antd": "^5.22.4",
     "bootstrap": "^5.3.3",
+    "firebase": "^11.1.0",
     "react": "^19.0.0",
     "react-bootstrap": "^2.10.6",
     "react-dom": "^19.0.0",

@@ -1,36 +1,95 @@
-import React from 'react';
-import Accordion from 'react-bootstrap/Accordion';
+import React, { useState, useEffect } from "react";
+import { Collapse } from "antd";
+import { db } from "../firebase/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import styled from "styled-components";
 
+const StyledPanelHeader = styled.span`
+  font-size: 36px;
+  font-weight: bold;
+  color: ${({ temperature }) => {
+    switch (temperature) {
+      case "hot":
+        return "rgb(200, 0, 0)";
+      case "cold":
+        return "rgb(0,0,175)";
+      case "reference":
+        return "rgb(200,175,0)";
+      default:
+        return "#222";
+    }
+  }};
+`;
 
-const Recipes = () => {
+const { Panel } = Collapse;
+
+const App = () => {
+  const [items, setItems] = useState([]);
+  const [activeKey, setActiveKey] = useState(["1"]);
+
+  const onChange = (key) => {
+    const latestKey = key?.[1]; // Get the most recent panel key
+
+    // Ensure only the selected panel remains open
+    setActiveKey([latestKey]);
+  };
+
+  const fetchData = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "mission-cafe"));
+      let data = querySnapshot.docs.map((doc) => ({
+        key: doc.id,
+        name: doc.data().name,
+        temperature: doc.data().temperature,
+      }));
+
+      // Filter out items where temperature is "reference"
+      data = data.filter((item) => item.temperature !== "reference");
+
+      // Define a priority order for sorting temperatures
+      const temperatureOrder = { hot: 1, cold: 2 };
+
+      // Sort items first by temperature and then by name
+      data.sort((a, b) => {
+        const tempA = temperatureOrder[a.temperature] ?? 3;
+        const tempB = temperatureOrder[b.temperature] ?? 3;
+
+        if (tempA !== tempB) {
+          return tempA - tempB;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      setItems(data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   return (
-    <Accordion defaultActiveKey="0">
-      <Accordion.Item eventKey="0">
-        <Accordion.Header>Accordion Item #1</Accordion.Header>
-        <Accordion.Body>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum.
-        </Accordion.Body>
-      </Accordion.Item>
-      <Accordion.Item eventKey="1">
-        <Accordion.Header>Accordion Item #2</Accordion.Header>
-        <Accordion.Body>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum.
-        </Accordion.Body>
-      </Accordion.Item>
-    </Accordion>
+    <Collapse
+      activeKey={activeKey}
+      onChange={onChange}
+      expandIcon={() => null} // This removes the caret icon
+    >
+      {items.map((item) => (
+        <Panel
+          header={
+            <StyledPanelHeader temperature={item.temperature}>
+              {item.name}
+            </StyledPanelHeader>
+          }
+          key={item.key}
+        >
+          {item.temperature}
+        </Panel>
+      ))}
+    </Collapse>
   );
 };
 
-export default Recipes;
+export default App;
