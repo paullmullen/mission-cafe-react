@@ -34,6 +34,34 @@ const StyledListItem = styled.li`
   margin-bottom: 12px; /* Adds spacing between list items */
 `;
 
+const IngredientTable = styled.table`
+  width: 100%;
+  table-layout: fixed;
+  margin-left: 16px; /* Align table with ingredient name */
+  border-collapse: collapse;
+`;
+
+const TableCell = styled.td`
+  padding: 8px;
+  text-align: left;
+  word-break: break-word;
+  font-size: 16px;
+  border: none;
+`;
+
+const IngredientName = styled.span`
+  font-weight: bold;
+  font-size: 22px; /* Larger font size for ingredient name */
+`;
+
+const IngredientSize = styled.span`
+  font-size: 16px; /* Smaller font size for sizes */
+`;
+
+const IngredientAmount = styled.span`
+  font-size: 20px; /* Keep the same size for amounts */
+`;
+
 const { Panel } = Collapse;
 
 const App = () => {
@@ -100,15 +128,57 @@ const App = () => {
           }
           key={item.key}
         >
-          {" "}
+          {/* Render Ingredients */}
+          {item.ingredients && item.ingredients.length > 0 && (
+            <>
+              {item.ingredients.map((ingredient, index) => {
+                const sizesArray = ingredient.ingredientSizes.split(", ");
+                const amountsArray = ingredient.ingredientAmounts.split(", ");
+
+                return (
+                  <div key={index}>
+                    <IngredientName>{ingredient.ingredientName}</IngredientName>
+
+                    <IngredientTable>
+                      <tbody>
+                        {/* Row 1: Ingredient Sizes */}
+                        <tr>
+                          {sizesArray.map((size, idx) => (
+                            <TableCell key={`size-${idx}`}>
+                              <IngredientSize>{size}</IngredientSize>
+                            </TableCell>
+                          ))}
+                        </tr>
+
+                        {/* Row 2: Ingredient Amounts */}
+                        <tr>
+                          {amountsArray.map((amount, idx) => (
+                            <TableCell key={`amount-${idx}`}>
+                              <IngredientAmount>{amount}</IngredientAmount>
+                            </TableCell>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </IngredientTable>
+                    <>
+                      <hr></hr>
+                    </>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {/* Render Instructions */}
           {item.instructions && item.instructions.length > 0 && (
             <>
               <StyledSubtitle>Instructions</StyledSubtitle>
               <ol>
                 {item.instructions.map((instruction, index) => (
-                  <StyledListItem key={index}>
-                    {instruction.text}
-                  </StyledListItem>
+                  <StyledListItem
+                    key={index}
+                    dangerouslySetInnerHTML={{ __html: instruction.text }}
+                  />
                 ))}
               </ol>
             </>

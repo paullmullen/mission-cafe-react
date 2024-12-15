@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import styled from 'styled-components';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import styled from "styled-components";
 
 const SidebarLink = styled(Link)`
   display: flex;
@@ -22,6 +22,11 @@ const SidebarLink = styled(Link)`
 
 const SidebarLabel = styled.span`
   margin-left: 16px;
+  font-size: 20px;
+
+  .antd-menu-title-content & {
+    font-size: 20px;
+  }
 `;
 
 const DropdownLink = styled(Link)`
@@ -47,8 +52,8 @@ const SubMenu = ({ item, onClick }) => {
 
   return (
     <>
-      <SidebarLink 
-        to={item.path} 
+      <SidebarLink
+        to={item.path}
         onClick={() => {
           if (item.subNav) {
             showSubnav();
@@ -72,9 +77,9 @@ const SubMenu = ({ item, onClick }) => {
       {subnav &&
         item.subNav.map((item, index) => {
           return (
-            <DropdownLink 
-              to={item.path} 
-              key={index} 
+            <DropdownLink
+              to={item.path}
+              key={index}
               onClick={onClick} // Close the sidebar on dropdown link click
             >
               {item.icon}

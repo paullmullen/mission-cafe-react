@@ -21,3 +21,9 @@
 .ant-layout-sider {
   transition: all 0.3s ease-in-out;
 }
+
+
+.antd-menu-title-content {
+  font-size: 50px !important;
+  color: #fff !important;
+}
