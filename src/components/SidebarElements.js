@@ -2,9 +2,8 @@
 
 import styled from "styled-components";
 import { Link } from "react-router-dom";
-import {showSidebar} from "./Sidebar";
-import * as FaIcons from 'react-icons/fa';
-
+import { showSidebar } from "./Sidebar";
+import * as FaIcons from "react-icons/fa";
 
 export const Nav = styled.div`
   background: #15171c;
@@ -27,15 +26,14 @@ const NavIcon = styled(Link)`
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   &:hover {
     background: #252831;
   }
 
   /* Pass the onClick prop */
-  ${props => props.onClick && `cursor: pointer;`}
+  ${(props) => props.onClick && `cursor: pointer;`}
 `;
-
 
 export const SidebarNav = styled.div`
   background: #15171c;
@@ -46,9 +44,10 @@ export const SidebarNav = styled.div`
   position: fixed;
   top: 0;
   left: ${({ $sidebar }) => {
-    console.log('Sidebar prop:', $sidebar); // Debugging
+    console.log("Sidebar prop:", $sidebar); // Debugging
     return $sidebar ? "0" : "-100%";
-  }};  transition: 0.3s ease-in-out;
+  }};
+  transition: 0.3s ease-in-out;
 `;
 
 export const SidebarWrap = styled.div`
