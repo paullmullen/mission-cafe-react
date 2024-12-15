@@ -5,7 +5,7 @@ import { collection, getDocs } from "firebase/firestore";
 import styled from "styled-components";
 
 const StyledPanelHeader = styled.span`
-  font-size: 36px;
+  font-size: 28px;
   font-weight: bold;
   color: ${({ temperature }) => {
     switch (temperature) {
@@ -19,6 +19,19 @@ const StyledPanelHeader = styled.span`
         return "#222";
     }
   }};
+`;
+
+const StyledSubtitle = styled.h3`
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  color: #333;
+`;
+
+const StyledListItem = styled.li`
+  font-size: 20px;
+  line-height: 1.6;
+  margin-bottom: 12px; /* Adds spacing between list items */
 `;
 
 const { Panel } = Collapse;
@@ -41,6 +54,8 @@ const App = () => {
         key: doc.id,
         name: doc.data().name,
         temperature: doc.data().temperature,
+        instructions: doc.data().instructions,
+        ingredients: doc.data().ingredients,
       }));
 
       // Filter out items where temperature is "reference"
@@ -85,7 +100,19 @@ const App = () => {
           }
           key={item.key}
         >
-          {item.temperature}
+          {" "}
+          {item.instructions && item.instructions.length > 0 && (
+            <>
+              <StyledSubtitle>Instructions</StyledSubtitle>
+              <ol>
+                {item.instructions.map((instruction, index) => (
+                  <StyledListItem key={index}>
+                    {instruction.text}
+                  </StyledListItem>
+                ))}
+              </ol>
+            </>
+          )}
         </Panel>
       ))}
     </Collapse>
