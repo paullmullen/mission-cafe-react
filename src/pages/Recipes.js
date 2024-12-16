@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Collapse } from "antd";
+import { Collapse, message } from "antd";
 import { db } from "../firebase/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import styled from "styled-components";
 
 const StyledPanelHeader = styled.span`
@@ -109,6 +114,7 @@ const App = () => {
   const [activeKey, setActiveKey] = useState(["1"]);
   const [feedbackVisible, setFeedbackVisible] = useState({});
   const [feedbackText, setFeedbackText] = useState({});
+  const [submitterName, setSubmitterName] = useState({}); // State for names
 
   const onChange = (key) => {
     const latestKey = key?.[1];
@@ -163,14 +169,42 @@ const App = () => {
     setFeedbackVisible((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleFeedbackSubmit = async (key) => {
+    const feedback = feedbackText[key];
+    const name = submitterName[key];
+
+    if (!feedback || !name) {
+      message.error("Please complete all fields before submitting.");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "issues"), {
+        date: serverTimestamp(),
+        description: feedback,
+        recipe: items.find((item) => item.key === key)?.name || "Unknown",
+        resolved: false,
+        name, // Store the submitter's name
+      });
+
+      message.success("Thank you for your feedback! It has been submitted.");
+      setFeedbackText((prev) => ({ ...prev, [key]: "" }));
+      setSubmitterName((prev) => ({ ...prev, [key]: "" }));
+      setFeedbackVisible((prev) => ({ ...prev, [key]: false }));
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      message.error(
+        "An error occurred while submitting your feedback. Please try again."
+      );
+    }
+  };
+
   const handleFeedbackChange = (key, text) => {
     setFeedbackText((prev) => ({ ...prev, [key]: text }));
   };
 
-  const handleFeedbackSubmit = (key) => {
-    alert(`Got it.  Thanks for the feedback.`);
-    setFeedbackText((prev) => ({ ...prev, [key]: "" }));
-    setFeedbackVisible((prev) => ({ ...prev, [key]: false }));
+  const handleNameChange = (key, name) => {
+    setSubmitterName((prev) => ({ ...prev, [key]: name }));
   };
 
   return (
@@ -250,7 +284,21 @@ const App = () => {
               <FeedbackTextarea
                 value={feedbackText[item.key] || ""}
                 onChange={(e) => handleFeedbackChange(item.key, e.target.value)}
-                placeholder="How can this recipe be improved?"
+                placeholder="Enter your feedback here..."
+              />
+              <input
+                type="text"
+                value={submitterName[item.key] || ""}
+                onChange={(e) => handleNameChange(item.key, e.target.value)}
+                placeholder="Enter your name..."
+                style={{
+                  marginBottom: "8px",
+                  padding: "8px",
+                  fontSize: "16px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  width: "100%",
+                }}
               />
               <StyledButton onClick={() => handleFeedbackSubmit(item.key)}>
                 Submit
