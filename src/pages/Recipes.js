@@ -12,9 +12,9 @@ const StyledPanelHeader = styled.span`
       case "hot":
         return "rgb(200, 0, 0)";
       case "cold":
-        return "rgb(0,0,175)";
+        return "rgb(0, 0, 175)";
       case "reference":
-        return "rgb(200,175,0)";
+        return "rgb(200, 175, 0)";
       default:
         return "#222";
     }
@@ -25,19 +25,19 @@ const StyledSubtitle = styled.h3`
   font-size: 18px;
   font-weight: bold;
   margin-bottom: 16px;
-  color: #333;
+  color: #000;
 `;
 
 const StyledListItem = styled.li`
   font-size: 20px;
   line-height: 1.6;
-  margin-bottom: 12px; /* Adds spacing between list items */
+  margin-bottom: 12px;
 `;
 
 const IngredientTable = styled.table`
   width: 100%;
   table-layout: fixed;
-  margin-left: 16px; /* Align table with ingredient name */
+  margin-left: 16px;
   border-collapse: collapse;
 `;
 
@@ -51,15 +51,55 @@ const TableCell = styled.td`
 
 const IngredientName = styled.span`
   font-weight: bold;
-  font-size: 22px; /* Larger font size for ingredient name */
+  font-size: 22px;
 `;
 
 const IngredientSize = styled.span`
-  font-size: 16px; /* Smaller font size for sizes */
+  font-size: 16px;
 `;
 
 const IngredientAmount = styled.span`
-  font-size: 20px; /* Keep the same size for amounts */
+  font-size: 20px;
+`;
+
+const StyledButton = styled.button`
+  text-transform: uppercase;
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #d9d9d9;
+  }
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  justify-content: flex-start;
+  gap: 16px;
+  margin-top: 24px;
+`;
+
+const FeedbackContainer = styled.div`
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+`;
+
+const FeedbackTextarea = styled.textarea`
+  width: 100%;
+  height: 80px;
+  padding: 8px;
+  font-size: 16px;
+  margin-bottom: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: none;
 `;
 
 const { Panel } = Collapse;
@@ -67,11 +107,11 @@ const { Panel } = Collapse;
 const App = () => {
   const [items, setItems] = useState([]);
   const [activeKey, setActiveKey] = useState(["1"]);
+  const [feedbackVisible, setFeedbackVisible] = useState({});
+  const [feedbackText, setFeedbackText] = useState({});
 
   const onChange = (key) => {
-    const latestKey = key?.[1]; // Get the most recent panel key
-
-    // Ensure only the selected panel remains open
+    const latestKey = key?.[1];
     setActiveKey([latestKey]);
   };
 
@@ -84,15 +124,13 @@ const App = () => {
         temperature: doc.data().temperature,
         instructions: doc.data().instructions,
         ingredients: doc.data().ingredients,
+        prep: doc.data().prep,
+        prepVisible: false,
       }));
 
-      // Filter out items where temperature is "reference"
       data = data.filter((item) => item.temperature !== "reference");
 
-      // Define a priority order for sorting temperatures
       const temperatureOrder = { hot: 1, cold: 2 };
-
-      // Sort items first by temperature and then by name
       data.sort((a, b) => {
         const tempA = temperatureOrder[a.temperature] ?? 3;
         const tempB = temperatureOrder[b.temperature] ?? 3;
@@ -113,12 +151,30 @@ const App = () => {
     fetchData();
   }, []);
 
+  const togglePrep = (key) => {
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        item.key === key ? { ...item, prepVisible: !item.prepVisible } : item
+      )
+    );
+  };
+
+  const toggleFeedback = (key) => {
+    setFeedbackVisible((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleFeedbackChange = (key, text) => {
+    setFeedbackText((prev) => ({ ...prev, [key]: text }));
+  };
+
+  const handleFeedbackSubmit = (key) => {
+    alert(`Got it.  Thanks for the feedback.`);
+    setFeedbackText((prev) => ({ ...prev, [key]: "" }));
+    setFeedbackVisible((prev) => ({ ...prev, [key]: false }));
+  };
+
   return (
-    <Collapse
-      activeKey={activeKey}
-      onChange={onChange}
-      expandIcon={() => null} // This removes the caret icon
-    >
+    <Collapse activeKey={activeKey} onChange={onChange} expandIcon={() => null}>
       {items.map((item) => (
         <Panel
           header={
@@ -128,7 +184,6 @@ const App = () => {
           }
           key={item.key}
         >
-          {/* Render Ingredients */}
           {item.ingredients && item.ingredients.length > 0 && (
             <>
               {item.ingredients.map((ingredient, index) => {
@@ -138,10 +193,8 @@ const App = () => {
                 return (
                   <div key={index}>
                     <IngredientName>{ingredient.ingredientName}</IngredientName>
-
                     <IngredientTable>
                       <tbody>
-                        {/* Row 1: Ingredient Sizes */}
                         <tr>
                           {sizesArray.map((size, idx) => (
                             <TableCell key={`size-${idx}`}>
@@ -149,8 +202,6 @@ const App = () => {
                             </TableCell>
                           ))}
                         </tr>
-
-                        {/* Row 2: Ingredient Amounts */}
                         <tr>
                           {amountsArray.map((amount, idx) => (
                             <TableCell key={`amount-${idx}`}>
@@ -160,16 +211,13 @@ const App = () => {
                         </tr>
                       </tbody>
                     </IngredientTable>
-                    <>
-                      <hr></hr>
-                    </>
+                    <hr />
                   </div>
                 );
               })}
             </>
           )}
 
-          {/* Render Instructions */}
           {item.instructions && item.instructions.length > 0 && (
             <>
               <StyledSubtitle>Instructions</StyledSubtitle>
@@ -183,6 +231,43 @@ const App = () => {
               </ol>
             </>
           )}
+
+          {item.prepVisible && item.prep && (
+            <div
+              style={{
+                marginTop: "16px",
+                padding: "16px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                backgroundColor: "#f9f9f9",
+              }}
+              dangerouslySetInnerHTML={{ __html: item.prep }}
+            />
+          )}
+
+          {feedbackVisible[item.key] && (
+            <FeedbackContainer>
+              <FeedbackTextarea
+                value={feedbackText[item.key] || ""}
+                onChange={(e) => handleFeedbackChange(item.key, e.target.value)}
+                placeholder="How can this recipe be improved?"
+              />
+              <StyledButton onClick={() => handleFeedbackSubmit(item.key)}>
+                Submit
+              </StyledButton>
+            </FeedbackContainer>
+          )}
+
+          <ButtonContainer>
+            {item.prep && (
+              <StyledButton onClick={() => togglePrep(item.key)}>
+                {item.prepVisible ? "Hide Prep" : "Prep"}
+              </StyledButton>
+            )}
+            <StyledButton onClick={() => toggleFeedback(item.key)}>
+              Feedback
+            </StyledButton>
+          </ButtonContainer>
         </Panel>
       ))}
     </Collapse>
