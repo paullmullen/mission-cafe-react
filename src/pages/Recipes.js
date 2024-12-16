@@ -7,105 +7,19 @@ import {
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import styled from "styled-components";
-
-const StyledPanelHeader = styled.span`
-  font-size: 28px;
-  font-weight: bold;
-  color: ${({ temperature }) => {
-    switch (temperature) {
-      case "hot":
-        return "rgb(200, 0, 0)";
-      case "cold":
-        return "rgb(0, 0, 175)";
-      case "reference":
-        return "rgb(200, 175, 0)";
-      default:
-        return "#222";
-    }
-  }};
-`;
-
-const StyledSubtitle = styled.h3`
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 16px;
-  color: #000;
-`;
-
-const StyledListItem = styled.li`
-  font-size: 20px;
-  line-height: 1.6;
-  margin-bottom: 12px;
-`;
-
-const IngredientTable = styled.table`
-  width: 100%;
-  table-layout: fixed;
-  margin-left: 16px;
-  border-collapse: collapse;
-`;
-
-const TableCell = styled.td`
-  padding: 8px;
-  text-align: left;
-  word-break: break-word;
-  font-size: 16px;
-  border: none;
-`;
-
-const IngredientName = styled.span`
-  font-weight: bold;
-  font-size: 22px;
-`;
-
-const IngredientSize = styled.span`
-  font-size: 16px;
-`;
-
-const IngredientAmount = styled.span`
-  font-size: 20px;
-`;
-
-const StyledButton = styled.button`
-  text-transform: uppercase;
-  background-color: #f0f0f0;
-  color: #333;
-  border: 1px solid #ccc;
-  padding: 8px 16px;
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: #d9d9d9;
-  }
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  justify-content: flex-start;
-  gap: 16px;
-  margin-top: 24px;
-`;
-
-const FeedbackContainer = styled.div`
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-`;
-
-const FeedbackTextarea = styled.textarea`
-  width: 100%;
-  height: 80px;
-  padding: 8px;
-  font-size: 16px;
-  margin-bottom: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  resize: none;
-`;
+import FeedbackForm from "../components/recipes/FeedbackForm";
+import {
+  StyledPanelHeader,
+  StyledSubtitle,
+  IngredientTable,
+  TableCell,
+  IngredientName,
+  IngredientSize,
+  IngredientAmount,
+  StyledButton,
+  ButtonContainer,
+  StyledListItem,
+} from "./StyledComponents";
 
 const { Panel } = Collapse;
 
@@ -280,30 +194,13 @@ const App = () => {
           )}
 
           {feedbackVisible[item.key] && (
-            <FeedbackContainer>
-              <FeedbackTextarea
-                value={feedbackText[item.key] || ""}
-                onChange={(e) => handleFeedbackChange(item.key, e.target.value)}
-                placeholder="Enter your feedback here..."
-              />
-              <input
-                type="text"
-                value={submitterName[item.key] || ""}
-                onChange={(e) => handleNameChange(item.key, e.target.value)}
-                placeholder="Enter your name..."
-                style={{
-                  marginBottom: "8px",
-                  padding: "8px",
-                  fontSize: "16px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  width: "100%",
-                }}
-              />
-              <StyledButton onClick={() => handleFeedbackSubmit(item.key)}>
-                Submit
-              </StyledButton>
-            </FeedbackContainer>
+            <FeedbackForm
+              feedbackText={feedbackText[item.key] || ""}
+              setFeedbackText={(text) => handleFeedbackChange(item.key, text)}
+              submitterName={submitterName[item.key] || ""}
+              setSubmitterName={(name) => handleNameChange(item.key, name)}
+              onSubmit={() => handleFeedbackSubmit(item.key)}
+            />
           )}
 
           <ButtonContainer>
