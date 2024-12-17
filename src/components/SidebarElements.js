@@ -1,9 +1,5 @@
-// SidebarElements.js
-
 import styled from "styled-components";
 import { Link } from "react-router-dom";
-import { showSidebar } from "./Sidebar";
-import * as FaIcons from "react-icons/fa";
 
 export const Nav = styled.div`
   background: #15171c;
