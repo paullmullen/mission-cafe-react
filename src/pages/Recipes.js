@@ -19,6 +19,7 @@ import {
   StyledButton,
   ButtonContainer,
   StyledListItem,
+  RecipeImage,
 } from "./StyledComponents";
 
 const { Panel } = Collapse;
@@ -45,6 +46,7 @@ const App = () => {
         instructions: doc.data().instructions,
         ingredients: doc.data().ingredients,
         prep: doc.data().prep,
+        image: doc.data().image,
         prepVisible: false,
       }));
 
@@ -132,6 +134,7 @@ const App = () => {
           }
           key={item.key}
         >
+          {/* Ingredients Section */}
           {item.ingredients && item.ingredients.length > 0 && (
             <>
               {item.ingredients.map((ingredient, index) => {
@@ -166,20 +169,46 @@ const App = () => {
             </>
           )}
 
+          {/* Instructions + Image Section */}
           {item.instructions && item.instructions.length > 0 && (
-            <>
-              <StyledSubtitle>Instructions</StyledSubtitle>
-              <ol>
-                {item.instructions.map((instruction, index) => (
-                  <StyledListItem
-                    key={index}
-                    dangerouslySetInnerHTML={{ __html: instruction.text }}
-                  />
-                ))}
-              </ol>
-            </>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "flex-start",
+              }}
+            >
+              {/* Instructions Section */}
+              <div style={{ flex: 1, marginRight: "16px" }}>
+                <StyledSubtitle>Instructions</StyledSubtitle>
+                <ol>
+                  {item.instructions.map((instruction, index) => (
+                    <StyledListItem
+                      key={index}
+                      dangerouslySetInnerHTML={{ __html: instruction.text }}
+                    />
+                  ))}
+                </ol>
+              </div>
+
+              {/* Recipe Image */}
+              {item.image && (
+                <RecipeImage
+                  src={item.image}
+                  alt={`${item.name} image`}
+                  style={{
+                    maxWidth: "300px",
+                    maxHeight: "400px",
+                    objectFit: "cover",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                  }}
+                />
+              )}
+            </div>
           )}
 
+          {/* Prep Section */}
           {item.prepVisible && item.prep && (
             <div
               style={{
@@ -193,6 +222,7 @@ const App = () => {
             />
           )}
 
+          {/* Feedback Form */}
           {feedbackVisible[item.key] && (
             <FeedbackForm
               feedbackText={feedbackText[item.key] || ""}
@@ -203,6 +233,7 @@ const App = () => {
             />
           )}
 
+          {/* Buttons */}
           <ButtonContainer>
             {item.prep && (
               <StyledButton onClick={() => togglePrep(item.key)}>
