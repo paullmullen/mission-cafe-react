@@ -97,3 +97,21 @@ export const FeedbackTextarea = styled.textarea`
   border-radius: 4px;
   resize: none;
 `;
+
+export const RecipeContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+`;
+
+export const InstructionsTable = styled.div`
+  flex: 1;
+  margin-right: 20px;
+`;
+
+export const RecipeImage = styled.img`
+  max-width: 300px;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+`;
