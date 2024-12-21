@@ -8,6 +8,7 @@ import {
   doc,
   updateDoc,
   getDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import styled from "styled-components";
 
@@ -107,6 +108,10 @@ const InventoryPage = () => {
   // Send email to managers
   const sendEmailToManagers = async () => {
     try {
+      const mailSnapshot = await getDocs(collection(db, "mail"));
+      const deletePromises = mailSnapshot.docs.map((doc) => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
       let htmlContent = "<h3>Mission Cafe Inventory Update</h3>";
 
       // Iterate over categories and create tables for each category
