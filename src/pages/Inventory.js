@@ -7,6 +7,7 @@ import {
   addDoc,
   doc,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
 import styled from "styled-components";
 
@@ -24,9 +25,14 @@ const NotesInput = styled(Input.TextArea)`
   width: 100%;
 `;
 
+const ExtraNotesContainer = styled.div`
+  margin-top: 20px;
+`;
+
 const InventoryPage = () => {
   const [inventoryData, setInventoryData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [extraNotes, setExtraNotes] = useState(""); // State variable for extra notes
 
   // Fetch data from Firestore
   const fetchInventoryData = async () => {
@@ -45,8 +51,21 @@ const InventoryPage = () => {
     }
   };
 
+  const fetchExtraNotes = async () => {
+    try {
+      const docRef = doc(db, "notes", "currentNote");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setExtraNotes(docSnap.data().note || ""); // Set initial value for extraNotes
+      }
+    } catch (error) {
+      toast.error("Error fetching extra notes");
+    }
+  };
+
   useEffect(() => {
     fetchInventoryData();
+    fetchExtraNotes();
   }, []);
 
   // Handle changes in current value
@@ -123,9 +142,12 @@ const InventoryPage = () => {
         });
 
         htmlContent += `
-          </tbody>
-        </table>
-        <br/>`;
+  </tbody>
+</table>
+<br/>
+<h2>Additional Notes</h2>
+<p>${extraNotes}</p>
+`;
       }
 
       let textContent = "Mission Cafe Inventory Update\n\n";
@@ -167,6 +189,22 @@ const InventoryPage = () => {
   }, {});
 
   const sortedCategories = Object.keys(groupedData).sort();
+
+  const updateExtraNotesInFirestore = async (newNotes) => {
+    try {
+      const docRef = doc(db, "notes", "currentNote");
+      await updateDoc(docRef, { note: newNotes });
+      toast.success("Notes updated successfully");
+    } catch (error) {
+      toast.error("Error updating notes in Firestore");
+    }
+  };
+
+  const handleBlur = async (e) => {
+    const newNotes = e.target.value;
+    setExtraNotes(newNotes); // Update state
+    await updateExtraNotesInFirestore(newNotes); // Update Firestore
+  };
 
   return (
     <PageContainer>
@@ -241,6 +279,16 @@ const InventoryPage = () => {
           />
         </TableWrapper>
       ))}
+
+      <ExtraNotesContainer>
+        <NotesInput
+          value={extraNotes} // Bind to state variable
+          onChange={(e) => setExtraNotes(e.target.value)} // Update state as user types
+          onBlur={handleBlur} // Call handleBlur onBlur to update Firestore
+          placeholder="Enter additional notes here"
+          rows={4}
+        />
+      </ExtraNotesContainer>
       <Button
         type="primary"
         onClick={sendEmailToManagers}
