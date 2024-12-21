@@ -116,11 +116,12 @@ const InventoryPage = () => {
         <table border='1' style='border-collapse: collapse; width: 100%;'>
           <thead>
             <tr>
-              <th style="width: 30%; text-align: left;">Item</th>
-              <th style="width: 10%; text-align: right;">Par</th>
-              <th style="width: 10%; text-align: right;">Current</th>
-              <th style="width: 10%; text-align: right;">Units</th>
-              <th style="width: 40%; text-align: left;">Notes</th>
+              <th style="width: 25%; text-align: left; padding: 8px;">Item</th>
+              <th style="width: 5%; text-align: right; padding: 8px;">Par</th>
+              <th style="width: 5%; text-align: right; padding: 8px;">Current</th>
+              <th style="width: 12%; text-align: left; padding: 8px;">Units</th>
+              <th style="width: 28%; text-align: left; padding: 8px;">Notes</th>
+              <th style="width: 15%; text-align: left; padding: 8px;">Source</th> <!-- New column -->
             </tr>
           </thead>
           <tbody>`;
@@ -128,49 +129,47 @@ const InventoryPage = () => {
         groupedData[category].forEach((item) => {
           const isBelowPar = item.current < item.par;
           htmlContent += `
-          <tr style="background-color: ${isBelowPar ? "#f8d7da" : "white"};">
+          <tr>
             <td style="color: ${isBelowPar ? "red" : "black"}; font-weight: ${
             isBelowPar ? "bold" : "normal"
-          };">${item.name}</td>
-            <td style="text-align: right;">${item.par}</td>
+          }; padding: 8px;">${item.name}</td>
+            <td style="text-align: right; padding: 8px;">${item.par}</td>
             <td style="color: ${isBelowPar ? "red" : "black"}; font-weight: ${
             isBelowPar ? "bold" : "normal"
-          }; text-align: right;">${item.current}</td>
-            <td style="text-align: right;">${item.units}</td>
-            <td>${item.notes || "N/A"}</td>
+          }; text-align: right; padding: 8px;">${item.current}</td>
+            <td style="text-align: left; padding: 8px;">${item.units}</td>
+            <td style="padding: 8px;">${item.notes || ""}</td>
+            <td style="padding: 8px;">${
+              item.supplier || "N/A"
+            }</td> <!-- Display Source -->
           </tr>`;
         });
 
         htmlContent += `
-  </tbody>
-</table>
-<br/>
-<h2>Additional Notes</h2>
-<p>${extraNotes}</p>
-`;
+        </tbody>
+      </table>
+      <br/>
+      `;
       }
 
-      let textContent = "Mission Cafe Inventory Update\n\n";
-      for (const category of sortedCategories) {
-        textContent += `${category}:\n\n`;
-        groupedData[category].forEach((item) => {
-          textContent += `Item: ${item.name}\nPar: ${item.par}\nCurrent: ${
-            item.current
-          }\nUnits: ${item.units}\nNotes: ${item.notes || "N/A"}\n\n`;
-        });
-      }
+      // Add additional notes at the end
+      htmlContent += `
+      <h2>Additional Notes</h2>
+      <p>${extraNotes || "No additional notes provided."}</p>
+    `;
 
+      // Get manager emails
       const managersSnapshot = await getDocs(collection(db, "managers"));
       const managersEmails = managersSnapshot.docs.map(
         (doc) => doc.data().email
       );
 
+      // Send email
       await addDoc(collection(db, "mail"), {
         to: managersEmails,
         message: {
           subject: "Mission Cafe Inventory Update",
-          text: textContent,
-          html: htmlContent,
+          html: htmlContent, // Only send HTML content
         },
       });
 
@@ -194,7 +193,6 @@ const InventoryPage = () => {
     try {
       const docRef = doc(db, "notes", "currentNote");
       await updateDoc(docRef, { note: newNotes });
-      toast.success("Notes updated successfully");
     } catch (error) {
       toast.error("Error updating notes in Firestore");
     }
@@ -218,6 +216,7 @@ const InventoryPage = () => {
                 title: "Item",
                 dataIndex: "name",
                 key: "name",
+                width: "30%",
                 render: (text, record) => (
                   <span
                     style={{
@@ -234,11 +233,13 @@ const InventoryPage = () => {
                 title: "Par",
                 dataIndex: "par",
                 key: "par",
+                width: "10%",
               },
               {
                 title: "Current",
                 dataIndex: "current",
                 key: "current",
+                width: "10%",
                 render: (text, record) => (
                   <Input
                     type="number"
@@ -253,11 +254,13 @@ const InventoryPage = () => {
                 title: "Units",
                 dataIndex: "units",
                 key: "units",
+                width: "15%",
               },
               {
                 title: "Notes",
                 dataIndex: "notes",
                 key: "notes",
+                width: "35%",
                 render: (text, record) => (
                   <NotesInput
                     value={text}
