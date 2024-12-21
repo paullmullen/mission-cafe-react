@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { db } from "../firebase"; // Adjust path as per your setup
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { db } from "../firebase/firebase"; // Adjust path as per your setup
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -27,41 +27,51 @@ const StyledEditor = styled.div`
 `;
 
 const ManagerMessage = () => {
-  const [message, setMessage] = useState("");
+  const [messageText, setMessageText] = useState("");
   const [password, setPassword] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const docRef = doc(db, "managerMessages", "currentMessage");
-  const managerPassword = "securepassword"; // Replace with a secure approach
+  const docRef = useMemo(
+    () => doc(db, "managerMessages", "currentMessage"),
+    []
+  );
+
+  const managerPassword = "paul"; // Replace with a secure approach
 
   // Fetch the message from Firestore
   useEffect(() => {
     const fetchMessage = async () => {
+      setLoading(true);
       try {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setMessage(docSnap.data().message || "");
+          const fetchedMessage = docSnap.data().message || "";
+          setMessageText(fetchedMessage);
+        } else {
         }
       } catch (error) {
-        console.error("Error fetching manager message:", error);
+        toast.error("Failed to fetch the manager's message.");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchMessage();
-  }, []);
+  }, [docRef]);
 
   // Save the message to Firestore
   const saveMessage = async () => {
+    if (!messageText) return;
+
     try {
       await setDoc(docRef, {
-        message,
+        message: messageText,
         lastUpdated: serverTimestamp(),
       });
-      toast.success("Message saved successfully!");
-      setIsEditing(false);
+      toast.success("Message saved successfully.");
     } catch (error) {
-      console.error("Error saving message:", error);
-      toast.error("Failed to save message.");
+      toast.error("Failed to save the message.");
     }
   };
 
@@ -75,12 +85,19 @@ const ManagerMessage = () => {
     }
   };
 
+  // Handle editor change with useCallback for stability
+  const handleEditorChange = useCallback((value) => {
+    setMessageText(value);
+  }, []);
+
   return (
     <Container>
       <h1>Manager's Message</h1>
-      {!isEditing && (
+      {loading ? (
+        <p>Loading...</p>
+      ) : !isEditing ? (
         <>
-          <div dangerouslySetInnerHTML={{ __html: message }} />
+          <div dangerouslySetInnerHTML={{ __html: messageText }} />
           <PasswordInput
             placeholder="Enter password to edit"
             onChange={(e) => setPassword(e.target.value)}
@@ -90,11 +107,14 @@ const ManagerMessage = () => {
             Unlock Editor
           </Button>
         </>
-      )}
-      {isEditing && (
+      ) : (
         <>
           <StyledEditor>
-            <ReactQuill value={message} onChange={setMessage} />
+            <ReactQuill
+              value={messageText}
+              onChange={handleEditorChange}
+              theme="snow"
+            />
           </StyledEditor>
           <Button
             onClick={saveMessage}

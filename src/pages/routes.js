@@ -6,6 +6,7 @@ import Inventory from "./Inventory";
 import Specials from "./Specials";
 import Calculator from "./Calculator";
 import Maintenance from "./Maintenance";
+import ManagerMessage from "./ManagerMessage";
 import FeedbackList from "./FeedbackList";
 
 const routes = [
@@ -18,6 +19,11 @@ const routes = [
   { path: "/calculator", component: Calculator, title: "Drawer Calculator" },
   { path: "/maintenance", component: Maintenance, title: "Maintenance" },
   { path: "/feedbackList", component: FeedbackList, title: "Feedback Log" },
+  {
+    path: "/managerMessage",
+    component: ManagerMessage,
+    title: "Manager's Message",
+  },
 ];
 
 export default routes;
