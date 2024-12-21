@@ -9,7 +9,6 @@ const FeedbackList = () => {
     const fetchIssues = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "issues"));
-        console.log("Fetched issues snapshot:", querySnapshot);
 
         const issuesData = querySnapshot.docs
           .map((doc) => {

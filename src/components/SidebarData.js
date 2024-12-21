@@ -54,4 +54,9 @@ export const SidebarData = [
     path: "FeedbackList",
     icon: <IoIcons.IoMdHelpCircle />,
   },
+  {
+    title: "Manager's Message",
+    path: "ManagerMessage",
+    icon: <IoIcons.IoMdHelpCircle />,
+  },
 ];
