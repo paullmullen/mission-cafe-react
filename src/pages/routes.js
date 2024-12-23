@@ -10,7 +10,7 @@ import ManagerMessage from "./ManagerMessage";
 import FeedbackList from "./FeedbackList";
 
 const routes = [
-  { path: "/recipes", component: Recipes, title: "Recipes" },
+  { path: "/", component: Recipes, title: "Recipes" },
   { path: "/reference", component: Reference, title: "Reference" },
   { path: "/checklists", component: Checklists, title: "Checklists" },
   { path: "/safetyLog", component: SafetyLog, title: "Safety Log" },
