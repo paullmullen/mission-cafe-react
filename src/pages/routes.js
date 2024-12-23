@@ -8,6 +8,7 @@ import Calculator from "./Calculator";
 import Maintenance from "./Maintenance";
 import ManagerMessage from "./ManagerMessage";
 import FeedbackList from "./FeedbackList";
+import Associates from "./Associates";
 
 const routes = [
   { path: "/", component: Recipes, title: "Recipes" },
@@ -24,6 +25,7 @@ const routes = [
     component: ManagerMessage,
     title: "Manager's Message",
   },
+  { path: "/associate", component: Associates, title: "Associates" },
 ];
 
 export default routes;
