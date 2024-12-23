@@ -15,6 +15,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   CloseCircleOutlined,
+  SaveOutlined,
 } from "@ant-design/icons"; // Added CloseCircle for red X
 import { Modal } from "antd";
 
@@ -48,6 +49,7 @@ const StatusIcon = styled.span`
   height: 20px;
   border-radius: 50%;
   background-color: ${(props) => props.color || "transparent"};
+  vertical-align: top;
 `;
 
 const AssociateRow = styled.tr`
@@ -204,6 +206,7 @@ const AssociatesPage = () => {
                     <>
                       <EditableInput
                         type="text"
+                        placeholder="Last Name"
                         value={associate.firstName}
                         onChange={(e) =>
                           handleChange(e, associate.id, "firstName")
@@ -212,6 +215,7 @@ const AssociatesPage = () => {
                       />
                       <EditableInput
                         type="text"
+                        placeholder="First Name"
                         value={associate.lastName}
                         onChange={(e) =>
                           handleChange(e, associate.id, "lastName")
@@ -221,7 +225,7 @@ const AssociatesPage = () => {
                     </>
                   ) : (
                     <>
-                      {associate.firstName} {associate.lastName}
+                      {associate.lastName}, {associate.firstName}
                     </>
                   )}
                 </AssociateName>
@@ -229,6 +233,7 @@ const AssociatesPage = () => {
                   {editing[associate.id] ? (
                     <EditableInput
                       type="email"
+                      placeholder="email"
                       value={associate.email}
                       onChange={(e) => handleChange(e, associate.id, "email")}
                       onBlur={() => handleSave(associate.id, "email")}
@@ -241,6 +246,7 @@ const AssociatesPage = () => {
                   {editing[associate.id] ? (
                     <EditableInput
                       type="tel"
+                      placeholder="Phone Number"
                       value={associate.phone}
                       onChange={(e) => handleChange(e, associate.id, "phone")}
                       onBlur={() => handleSave(associate.id, "phone")}
@@ -251,8 +257,29 @@ const AssociatesPage = () => {
                 </AssociateLine>
                 <AssociateLine>
                   {editing[associate.id] ? (
+                    <>
+                      {
+                        "Birth Date: (We ask for birthdate in compliance with Elmbrook's Child Protection Policy)"
+                      }
+                      <EditableInput
+                        type="date"
+                        value={associate.birthdate}
+                        onChange={(e) =>
+                          handleChange(e, associate.id, "birthdate")
+                        }
+                        onBlur={() => handleSave(associate.id, "birthdate")}
+                      />
+                    </>
+                  ) : (
+                    ""
+                  )}
+                </AssociateLine>
+
+                <AssociateLine>
+                  {editing[associate.id] ? (
                     <EditableInput
                       type="text"
+                      placeholder="Availability"
                       value={associate.availability}
                       onChange={(e) =>
                         handleChange(e, associate.id, "availability")
@@ -267,6 +294,7 @@ const AssociatesPage = () => {
                   {editing[associate.id] ? (
                     <EditableInput
                       type="text"
+                      placeholder="Notes"
                       value={associate.notes}
                       onChange={(e) => handleChange(e, associate.id, "notes")}
                       onBlur={() => handleSave(associate.id, "notes")}
@@ -278,7 +306,11 @@ const AssociatesPage = () => {
               </TableData>
               <TableData>
                 <EditButton onClick={() => toggleEdit(associate.id)}>
-                  <EditOutlined />
+                  {editing[associate.id] ? (
+                    <SaveOutlined style={{ color: "green" }} />
+                  ) : (
+                    <EditOutlined />
+                  )}
                 </EditButton>
                 {editing[associate.id] && (
                   <DeleteButton onClick={() => handleDelete(associate.id)}>
