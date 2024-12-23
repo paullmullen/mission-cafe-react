@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -6,8 +6,11 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import { Layout, Menu, Button } from "antd";
+import { Layout, Menu, Button, Popover } from "antd";
 import routes from "./pages/routes";
+import { doc, getDoc } from "firebase/firestore"; // Firestore methods
+import { db } from "./firebase/firebase";
+import moment from "moment"; // To manage timestamps easily
 
 const { Header, Sider, Content } = Layout;
 
@@ -25,7 +28,6 @@ const AppHeader = ({ toggleSider }) => {
         alignItems: "center",
       }}
     >
-      {/* Hamburger icon to toggle the Sider */}
       <Button
         type="text"
         icon={<span style={{ fontSize: "24px" }}>☰</span>}
@@ -40,6 +42,78 @@ const AppHeader = ({ toggleSider }) => {
 const App = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const [visible, setVisible] = useState(false);
+  const [message, setMessage] = useState("");
+  const [timestamp, setTimestamp] = useState(moment());
+  const popoverContentRef = useRef(null);
+
+  // Fetch manager message from Firestore
+  const fetchData = async () => {
+    try {
+      const docRef = doc(db, "managerMessages", "currentMessage");
+      const docSnapshot = await getDoc(docRef);
+      if (docSnapshot.exists()) {
+        setMessage(docSnapshot.data().message);
+        setTimestamp(docSnapshot.data().timestamp);
+      } else {
+        console.log("No such document!");
+      }
+    } catch (error) {
+      console.error("Error fetching manager message: ", error);
+    }
+  };
+
+  useEffect(() => {
+    const checkVisibility = () => {
+      if (timestamp) {
+        const now = moment();
+        const diffInSeconds = now.diff(moment(timestamp), "seconds");
+
+        if (diffInSeconds >= 3600) {
+          console.log("10 seconds have passed, setting visible to true");
+          fetchData();
+          setVisible(true); // Show the Popover
+        } else {
+          setTimeout(checkVisibility, (3600 - diffInSeconds) * 1000); // Wait remaining seconds
+        }
+      } else {
+        const newTimestamp = moment();
+        console.log("Setting initial timestamp:", newTimestamp.format());
+        setTimestamp(newTimestamp);
+      }
+    };
+
+    checkVisibility();
+
+    return () => clearTimeout(); // Clean up timeouts
+  }, [timestamp]);
+
+  useEffect(() => {
+    if (visible && popoverContentRef.current) {
+      popoverContentRef.current.focus();
+    }
+  }, [visible]);
+
+  const closePopover = () => {
+    setVisible(false);
+    setTimestamp(moment()); // Reset timestamp when closed
+  };
+
+  // Popover content (manager's message)
+  const popoverContent = (
+    <div
+      ref={popoverContentRef}
+      tabIndex={-1} // Makes the div focusable
+      style={{ outline: "none" }} // Optional: Remove focus outline
+    >
+      <div
+        dangerouslySetInnerHTML={{
+          __html: message, // Assuming the message contains HTML content
+        }}
+      />
+      <Button onClick={closePopover}>Close</Button>
+    </div>
+  );
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -68,8 +142,25 @@ const App = () => {
 
       {/* Main Layout */}
       <Layout>
-        {/* Pass the toggleSider function down to AppHeader */}
         <AppHeader toggleSider={() => setCollapsed(!collapsed)} />
+
+        <Popover
+          content={popoverContent}
+          title="Manager's Message"
+          open={visible}
+          onOpenChange={(newVisible) => {
+            setVisible(newVisible);
+            if (!newVisible) {
+              setTimestamp(moment()); // Reset timestamp when closed
+            }
+          }}
+          placement="top"
+          trigger="click" // Ensure clicking outside closes it
+          overlayStyle={{
+            maxWidth: "80vw", // Smaller than screen width
+            margin: "0 auto", // Centered
+          }}
+        />
 
         {/* Main Content */}
         <Content style={{ padding: 20 }}>
