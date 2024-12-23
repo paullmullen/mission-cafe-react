@@ -6,6 +6,7 @@ import {
   orderBy,
   doc,
   updateDoc,
+  addDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import styled from "styled-components";
@@ -23,7 +24,19 @@ import { Modal } from "antd";
 const Container = styled.div`
   margin: 20px;
 `;
-
+const NewAssociateButton = styled.button`
+  background-color: rgb(17, 17, 219);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 5px;
+  &:hover {
+    background-color: rgb(17, 17, 219);
+  }
+`;
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -169,8 +182,48 @@ const AssociatesPage = () => {
     });
   };
 
+  // Function to handle the creation of a new associate entry
+  const handleNewAssociate = async () => {
+    try {
+      const newAssociateRef = await addDoc(collection(db, "associates"), {
+        firstName: null,
+        lastName: null,
+        email: null,
+        phone: null,
+        birthdate: null,
+        availability: null,
+        notes: null,
+        minor: null,
+        backgroundCheck: null,
+        backgroundCheckDate: null,
+        deleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Set this new associate as being edited
+      setEditing((prev) => ({
+        ...prev,
+        [newAssociateRef.id]: true,
+      }));
+
+      // Fetch associates again to include the newly created associate
+      const snapshot = await getDocs(collection(db, "associates"));
+      const associatesList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setAssociates(associatesList.filter((associate) => !associate.deleted));
+    } catch (error) {
+      console.error("Error creating new associate:", error);
+    }
+  };
+
   return (
     <Container>
+      <NewAssociateButton onClick={handleNewAssociate}>
+        Add New Associate
+      </NewAssociateButton>
       <Table>
         <tbody>
           {associates.map((associate) => (
@@ -207,20 +260,20 @@ const AssociatesPage = () => {
                       <EditableInput
                         type="text"
                         placeholder="Last Name"
-                        value={associate.firstName}
-                        onChange={(e) =>
-                          handleChange(e, associate.id, "firstName")
-                        }
-                        onBlur={() => handleSave(associate.id, "firstName")}
-                      />
-                      <EditableInput
-                        type="text"
-                        placeholder="First Name"
                         value={associate.lastName}
                         onChange={(e) =>
                           handleChange(e, associate.id, "lastName")
                         }
                         onBlur={() => handleSave(associate.id, "lastName")}
+                      />
+                      <EditableInput
+                        type="text"
+                        placeholder="First Name"
+                        value={associate.firstName}
+                        onChange={(e) =>
+                          handleChange(e, associate.id, "firstName")
+                        }
+                        onBlur={() => handleSave(associate.id, "firstName")}
                       />
                     </>
                   ) : (
