@@ -10,11 +10,12 @@ import {
 import { db } from "../firebase/firebase";
 import styled from "styled-components";
 import {
-  CheckCircleOutlined,
+  SecurityScanOutlined,
   UserSwitchOutlined,
   EditOutlined,
   DeleteOutlined,
-} from "@ant-design/icons";
+  CloseCircleOutlined,
+} from "@ant-design/icons"; // Added CloseCircle for red X
 import { Modal } from "antd";
 
 // Styled components
@@ -146,8 +147,9 @@ const AssociatesPage = () => {
   // Function to handle the delete operation (soft delete - set deleted to true)
   const handleDelete = async (id) => {
     Modal.confirm({
-      title: "Sure?",
-      content: "Are you sure you want to mark this associate as deleted?",
+      title: "Are you sure you want to mark this associate as deleted?",
+      content:
+        "This action cannot be undone, but the associate will not be shown.",
       okText: "Yes, delete",
       cancelText: "Cancel",
       onOk: async () => {
@@ -174,19 +176,25 @@ const AssociatesPage = () => {
               <TableData>
                 <StatusIcon
                   color={
-                    associate.backgroundCheckDate
-                      ? "green"
-                      : associate.minor
-                      ? "lightgreen"
-                      : "transparent"
+                    associate.minor
+                      ? "transparent" // Transparent background for minor (show outline circle)
+                      : associate.backgroundCheckDate
+                      ? "transparent" // Green for completed background check
+                      : "transparent" // Otherwise transparent background for X icon
                   }
                 >
-                  {associate.backgroundCheckDate ? (
-                    <CheckCircleOutlined style={{ color: "green" }} />
-                  ) : associate.minor ? (
-                    <UserSwitchOutlined style={{ color: "green" }} />
+                  {associate.minor ? (
+                    <UserSwitchOutlined
+                      style={{ fontSize: "20px", color: "lightgreen" }}
+                    />
+                  ) : associate.backgroundCheck ? (
+                    <SecurityScanOutlined
+                      style={{ fontSize: "20px", color: "green" }}
+                    />
                   ) : (
-                    ""
+                    <CloseCircleOutlined
+                      style={{ fontSize: "20px", color: "red" }}
+                    />
                   )}
                 </StatusIcon>
               </TableData>
