@@ -70,7 +70,6 @@ const App = () => {
         const diffInSeconds = now.diff(moment(timestamp), "seconds");
 
         if (diffInSeconds >= 3600) {
-          console.log("10 seconds have passed, setting visible to true");
           fetchData();
           setVisible(true); // Show the Popover
         } else {
@@ -78,7 +77,6 @@ const App = () => {
         }
       } else {
         const newTimestamp = moment();
-        console.log("Setting initial timestamp:", newTimestamp.format());
         setTimestamp(newTimestamp);
       }
     };
