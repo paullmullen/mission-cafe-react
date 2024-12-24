@@ -9,7 +9,7 @@ import {
   query,
   orderBy,
 } from "firebase/firestore";
-import { FaPencilAlt } from "react-icons/fa"; // Pencil icon for editing
+import { FaPencilAlt, FaSave } from "react-icons/fa"; // Pencil icon for editing
 import styled from "styled-components"; // Import styled-components
 
 const Specials = () => {
@@ -75,11 +75,24 @@ const Specials = () => {
   // Function to handle toggling edit mode for an entire event
   const handleToggleEdit = (eventId) => {
     setEvents((prevEvents) =>
-      prevEvents.map((event) =>
-        event.id === eventId
-          ? { ...event, isEditMode: !event.isEditMode }
-          : event
-      )
+      prevEvents.map((event) => {
+        if (event.id === eventId) {
+          // If switching from edit mode to view mode, sync staff data
+          if (event.isEditMode) {
+            const selectedStaffForEvent = selectedStaff[eventId] || [];
+            const updatedEvent = {
+              ...event,
+              staffInfo: associates.filter((staff) =>
+                selectedStaffForEvent.includes(staff.id)
+              ),
+            };
+            return { ...updatedEvent, isEditMode: false };
+          } else {
+            return { ...event, isEditMode: true }; // Switch to edit mode
+          }
+        }
+        return event;
+      })
     );
   };
 
@@ -95,7 +108,7 @@ const Specials = () => {
   // Function to save edited fields to Firestore
   const handleSave = async (eventId) => {
     const event = events.find((event) => event.id === eventId);
-    if (!event) return;
+    if (!event) return; // Make sure the event exists
 
     const eventRef = doc(db, "special-events", eventId);
     try {
@@ -104,8 +117,8 @@ const Specials = () => {
         contactPhone: event.contactPhone,
         orderDetails: event.orderDetails,
         payment: event.payment,
+        staff: selectedStaff[eventId] || [], // Save the selected staff
       });
-      console.log("Event updated successfully.");
     } catch (error) {
       console.error("Error updating event: ", error);
     }
@@ -128,10 +141,13 @@ const Specials = () => {
     });
   };
 
+  const handleSaveClick = (eventId) => {
+    handleSave(eventId); // Save the event
+    handleToggleEdit(eventId); // Toggle the edit mode off after saving
+  };
+
   useEffect(() => {
     fetchSpecialEvents();
-    console.log(associates);
-    console.log(events);
   }, []);
 
   if (loading) {
@@ -147,10 +163,19 @@ const Specials = () => {
           {events.map((event) => (
             <EventWrapper key={event.id}>
               <Header>
-                <FaPencilAlt
-                  onClick={() => handleToggleEdit(event.id)}
+                {/* Conditionally render pencil or save icon */}
+                <div
+                  onClick={() => {
+                    if (event.isEditMode) {
+                      handleSaveClick(event.id); // Save if in edit mode
+                    } else {
+                      handleToggleEdit(event.id); // Toggle edit mode if not
+                    }
+                  }}
                   style={{ cursor: "pointer", marginRight: "10px" }}
-                />
+                >
+                  {event.isEditMode ? <FaSave /> : <FaPencilAlt />}
+                </div>
                 <h2>
                   {event.eventType} - {event.event}
                 </h2>
@@ -313,37 +338,43 @@ const Specials = () => {
                     <TableData>
                       {event.isEditMode ? (
                         <div>
-                          {console.log(associates)}
-                          {associates.map((staff) => (
-                            <div
-                              key={staff.id}
-                              style={{ marginBottom: "10px" }}
-                            >
-                              <input
-                                type="checkbox"
-                                id={staff.id}
-                                checked={
-                                  selectedStaff[event.id]?.includes(staff.id) ||
-                                  false
-                                } // Pre-select based on selectedStaff
-                                onChange={() =>
-                                  handleStaffChange(staff.id, event.id)
-                                } // Handle staff selection
-                              />
-                              <label htmlFor={staff.id}>
-                                {staff.firstName} {staff.lastName}
-                              </label>
-                            </div>
-                          ))}
+                          {associates
+                            .sort((a, b) =>
+                              a.lastName.localeCompare(b.lastName)
+                            ) // Sort by last name alphabetically
+                            .map((staff) => (
+                              <div
+                                key={staff.id}
+                                style={{ marginBottom: "10px" }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  id={staff.id}
+                                  checked={
+                                    selectedStaff[event.id]?.includes(
+                                      staff.id
+                                    ) || false
+                                  } // Pre-select based on selectedStaff
+                                  onChange={() =>
+                                    handleStaffChange(staff.id, event.id)
+                                  } // Handle staff selection
+                                />
+                                <label htmlFor={staff.id}>
+                                  {staff.lastName}, {staff.firstName}
+                                </label>
+                              </div>
+                            ))}
                         </div>
                       ) : event.staffInfo && event.staffInfo.length > 0 ? (
-                        event.staffInfo.map((staff, index) => (
-                          <div key={index}>
-                            {staff
-                              ? `${staff.firstName} ${staff.lastName}`
-                              : "Unknown staff member"}
-                          </div>
-                        ))
+                        event.staffInfo
+                          .sort((a, b) => a.lastName.localeCompare(b.lastName)) // Sort by last name alphabetically
+                          .map((staff, index) => (
+                            <div key={index}>
+                              {staff
+                                ? `${staff.lastName}, ${staff.firstName}`
+                                : "Unknown staff member"}
+                            </div>
+                          ))
                       ) : (
                         <div>No staff assigned.</div>
                       )}
