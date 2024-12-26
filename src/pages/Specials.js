@@ -8,6 +8,7 @@ import {
   updateDoc,
   query,
   orderBy,
+  addDoc,
 } from "firebase/firestore";
 import { FaPencilAlt, FaSave } from "react-icons/fa"; // Pencil icon for editing
 import styled from "styled-components"; // Import styled-components
@@ -98,6 +99,7 @@ const Specials = () => {
 
   // Function to handle updating a specific field of an event
   const handleEdit = (eventId, field, value) => {
+    console.log(eventId, field, value);
     setEvents((prevEvents) =>
       prevEvents.map((event) =>
         event.id === eventId ? { ...event, [field]: value } : event
@@ -108,6 +110,9 @@ const Specials = () => {
   // Function to save edited fields to Firestore
   const handleSave = async (eventId) => {
     const event = events.find((event) => event.id === eventId);
+
+    console.log(eventId);
+
     if (!event) return; // Make sure the event exists
 
     const eventRef = doc(db, "special-events", eventId);
@@ -115,8 +120,13 @@ const Specials = () => {
       await updateDoc(eventRef, {
         contactPerson: event.contactPerson,
         contactPhone: event.contactPhone,
+        contactEmail: event.contactEmail,
         orderDetails: event.orderDetails,
+        startTime: event.startTime,
+        orderComplete: event.orderComplete,
+        endTime: event.endTime,
         payment: event.payment,
+
         staff: selectedStaff[eventId] || [], // Save the selected staff
       });
     } catch (error) {
@@ -146,6 +156,54 @@ const Specials = () => {
     handleToggleEdit(eventId); // Toggle the edit mode off after saving
   };
 
+  const isAnyEventInEditMode = events.some((event) => event.isEditMode);
+
+  const handleNewEvent = async () => {
+    try {
+      // Create a new event document with initial empty values
+      const newEventRef = await addDoc(collection(db, "special-events"), {
+        eventType: "", // Default to empty string
+        event: "",
+        startTime: new Date(),
+        endTime: new Date(),
+        location: "",
+        contactPerson: "",
+        contactPhone: "",
+        orderDetails: "",
+        orderComplete: false,
+        payment: "",
+        staff: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Set this new event as being edited
+      setEvents(
+        (prev) =>
+          [
+            ...prev,
+            {
+              id: newEventRef.id,
+              eventType: String,
+              event: String,
+              startTime: new Date(),
+              endTime: new Date(),
+              location: String,
+              contactPerson: String,
+              orderComplete: Boolean,
+              contactPhone: String,
+              orderDetails: String,
+              payment: String,
+              staff: [],
+              isEditMode: true, // Start in edit mode
+            },
+          ].sort((a, b) => a.startTime - b.startTime) // Sorting by startTime (optional)
+      );
+    } catch (error) {
+      console.error("Error creating new event:", error);
+    }
+  };
+
   useEffect(() => {
     fetchSpecialEvents();
   }, []);
@@ -156,6 +214,12 @@ const Specials = () => {
 
   return (
     <Container>
+      <NewEventButton
+        onClick={handleNewEvent}
+        disabled={isAnyEventInEditMode} // Disable button when isEditMode is true
+      >
+        New Event
+      </NewEventButton>
       {events.length === 0 ? (
         <p>No special events found.</p>
       ) : (
@@ -163,23 +227,47 @@ const Specials = () => {
           {events.map((event) => (
             <EventWrapper key={event.id}>
               <Header>
-                {/* Conditionally render pencil or save icon */}
-                <div
-                  onClick={() => {
-                    if (event.isEditMode) {
-                      handleSaveClick(event.id); // Save if in edit mode
-                    } else {
-                      handleToggleEdit(event.id); // Toggle edit mode if not
-                    }
-                  }}
-                  style={{ cursor: "pointer", marginRight: "10px" }}
-                >
-                  {event.isEditMode ? <FaSave /> : <FaPencilAlt />}
-                </div>
+                {event.isEditMode ? (
+                  <FaSave
+                    onClick={() => {
+                      handleSave(event.id); // Save the data when clicking the save icon
+                      handleToggleEdit(event.id); // Exit edit mode
+                    }}
+                    style={{ cursor: "pointer", marginRight: "10px" }}
+                  />
+                ) : (
+                  <FaPencilAlt
+                    onClick={() => handleToggleEdit(event.id)} // Enter edit mode
+                    style={{ cursor: "pointer", marginRight: "10px" }}
+                  />
+                )}
                 <h2>
-                  {event.eventType} - {event.event}
+                  {event.isEditMode ? (
+                    <>
+                      <input
+                        type="text"
+                        value={event.eventType || ""} // Fallback to empty string if eventType is null
+                        onChange={(e) =>
+                          handleEdit(event.id, "eventType", e.target.value)
+                        }
+                        placeholder={event.eventType ? "" : "Enter Event Type"} // Use placeholder if null
+                      />
+                      {" - "}
+                      <input
+                        type="text"
+                        value={event.event || ""} // Fallback to empty string if event is null
+                        onChange={(e) =>
+                          handleEdit(event.id, "event", e.target.value)
+                        }
+                        placeholder={event.event ? "" : "Enter Event Name"} // Use placeholder if null
+                      />
+                    </>
+                  ) : (
+                    `${event.eventType} - ${event.event}`
+                  )}
                 </h2>
               </Header>
+
               <Table>
                 <tbody>
                   <TableRow>
@@ -237,49 +325,111 @@ const Specials = () => {
                   <TableRow>
                     <TableHeader>Start Time:</TableHeader>
                     <TableData>
-                      {event.isEditMode ? (
-                        <Input
-                          type="datetime-local"
-                          value={new Date(event.startTime.seconds * 1000)
-                            .toISOString()
-                            .slice(0, 16)}
-                          onChange={(e) =>
-                            handleEdit(
-                              event.id,
-                              "startTime",
-                              new Date(e.target.value)
-                            )
-                          }
-                        />
-                      ) : (
-                        new Date(
-                          event.startTime.seconds * 1000
-                        ).toLocaleString()
-                      )}
+                      {
+                        event.isEditMode ? (
+                          <Input
+                            type="datetime-local"
+                            value={
+                              event.startTime &&
+                              !isNaN(
+                                (event.startTime.toDate
+                                  ? event.startTime.toDate()
+                                  : event.startTime
+                                ).getTime()
+                              ) // Ensure it's a valid date
+                                ? new Date(
+                                    (event.startTime.toDate
+                                      ? event.startTime.toDate()
+                                      : event.startTime
+                                    ).getTime() -
+                                      new Date(
+                                        event.startTime.toDate
+                                          ? event.startTime.toDate()
+                                          : event.startTime
+                                      ).getTimezoneOffset() *
+                                        60000
+                                  )
+                                    .toISOString()
+                                    .slice(0, 16) // Format to 'YYYY-MM-DDTHH:mm'
+                                : "" // Default to an empty string if no valid startTime
+                            }
+                            onChange={(e) =>
+                              handleEdit(
+                                event.id,
+                                "startTime",
+                                e.target.value
+                                  ? new Date(e.target.value) // Convert input back to Date object
+                                  : null // Handle empty value correctly
+                              )
+                            }
+                          />
+                        ) : event.startTime ? (
+                          new Date(
+                            event.startTime.toDate
+                              ? event.startTime.toDate()
+                              : event.startTime
+                          ).toLocaleString() // Display formatted date
+                        ) : (
+                          "No Start Time"
+                        ) // Handle case where startTime is null or undefined
+                      }
                     </TableData>
                   </TableRow>
+
                   <TableRow>
-                    <TableHeader>End Time:</TableHeader>
+                    <TableHeader>Start Time:</TableHeader>
                     <TableData>
-                      {event.isEditMode ? (
-                        <Input
-                          type="datetime-local"
-                          value={new Date(event.endTime.seconds * 1000)
-                            .toISOString()
-                            .slice(0, 16)}
-                          onChange={(e) =>
-                            handleEdit(
-                              event.id,
-                              "endTime",
-                              new Date(e.target.value)
-                            )
-                          }
-                        />
-                      ) : (
-                        new Date(event.endTime.seconds * 1000).toLocaleString()
-                      )}
+                      {
+                        event.isEditMode ? (
+                          <Input
+                            type="datetime-local"
+                            value={
+                              event.endTime &&
+                              !isNaN(
+                                (event.endTime.toDate
+                                  ? event.endTime.toDate()
+                                  : event.endTime
+                                ).getTime()
+                              ) // Ensure it's a valid date
+                                ? new Date(
+                                    (event.endTime.toDate
+                                      ? event.endTime.toDate()
+                                      : event.endTime
+                                    ).getTime() -
+                                      new Date(
+                                        event.endTime.toDate
+                                          ? event.endTime.toDate()
+                                          : event.endTime
+                                      ).getTimezoneOffset() *
+                                        60000
+                                  )
+                                    .toISOString()
+                                    .slice(0, 16) // Format to 'YYYY-MM-DDTHH:mm'
+                                : "" // Default to an empty string if no valid endTime
+                            }
+                            onChange={(e) =>
+                              handleEdit(
+                                event.id,
+                                "endTime",
+                                e.target.value
+                                  ? new Date(e.target.value) // Convert input back to Date object
+                                  : null // Handle empty value correctly
+                              )
+                            }
+                          />
+                        ) : event.endTime ? (
+                          new Date(
+                            event.endTime.toDate
+                              ? event.endTime.toDate()
+                              : event.endTime
+                          ).toLocaleString() // Display formatted date
+                        ) : (
+                          "No End Time"
+                        ) // Handle case where endTime is null or undefined
+                      }
                     </TableData>
                   </TableRow>
+
                   <TableRow>
                     <TableHeader>Order Complete:</TableHeader>
                     <TableData>
@@ -339,8 +489,10 @@ const Specials = () => {
                       {event.isEditMode ? (
                         <div>
                           {associates
+                            .filter((staff) => !staff.deleted && staff.lastName) // Only include associates that are not deleted
+
                             .sort((a, b) =>
-                              a.lastName.localeCompare(b.lastName)
+                              (a.lastName || "").localeCompare(b.lastName || "")
                             ) // Sort by last name alphabetically
                             .map((staff) => (
                               <div
@@ -350,14 +502,14 @@ const Specials = () => {
                                 <input
                                   type="checkbox"
                                   id={staff.id}
-                                  checked={
-                                    selectedStaff[event.id]?.includes(
+                                  checked={Boolean(
+                                    (selectedStaff[event.id] || []).includes(
                                       staff.id
-                                    ) || false
-                                  } // Pre-select based on selectedStaff
+                                    )
+                                  )}
                                   onChange={() =>
                                     handleStaffChange(staff.id, event.id)
-                                  } // Handle staff selection
+                                  }
                                 />
                                 <label htmlFor={staff.id}>
                                   {staff.lastName}, {staff.firstName}
@@ -382,11 +534,6 @@ const Specials = () => {
                   </TableRow>
                 </tbody>
               </Table>
-              {event.isEditMode && (
-                <SaveButton onClick={() => handleSave(event.id)}>
-                  Save
-                </SaveButton>
-              )}
             </EventWrapper>
           ))}
         </div>
@@ -459,6 +606,23 @@ const SaveButton = styled.button`
   border-radius: 4px;
   &:hover {
     background-color: #45a049;
+  }
+`;
+
+const NewEventButton = styled.button`
+  background-color: ${(props) =>
+    props.disabled ? "gray" : "rgb(17, 17, 219)"};
+  color: ${(props) => (props.disabled ? "#ccc" : "white")};
+  border: none;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  font-size: 16px;
+  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
+  border-radius: 5px;
+
+  &:hover {
+    background-color: ${(props) =>
+      props.disabled ? "gray" : "rgb(17, 17, 219)"};
   }
 `;
 
