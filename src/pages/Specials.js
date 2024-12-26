@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { db } from "../firebase/firebase"; // Import your db instance
 import {
   collection,
@@ -9,6 +9,7 @@ import {
   query,
   orderBy,
   addDoc,
+  where,
 } from "firebase/firestore";
 import { FaPencilAlt, FaSave } from "react-icons/fa"; // Pencil icon for editing
 import styled from "styled-components"; // Import styled-components
@@ -18,18 +19,26 @@ const Specials = () => {
   const [associates, setAssociates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState({});
+  const [showCompletedOrders, setShowCompletedOrders] = useState(false);
 
   // Function to fetch special events and associated staff
-  const fetchSpecialEvents = async () => {
+  const fetchSpecialEvents = useCallback(async () => {
     try {
       const eventsRef = collection(db, "special-events");
-      const eventsQuery = query(eventsRef, orderBy("startTime"));
+
+      // Modify query to filter by orderComplete based on checkbox
+      const eventsQuery = query(
+        eventsRef,
+        orderBy("startTime"),
+        where("orderComplete", "==", showCompletedOrders) // Filter by orderComplete
+      );
+
       const querySnapshot = await getDocs(eventsQuery);
       const eventsData = [];
       const allAssociates = {}; // Store all associates here
       const staffData = {}; // Will store staff for current event
 
-      // First, fetch all associates
+      // Fetch all associates
       const associatesRef = collection(db, "associates");
       const associatesSnapshot = await getDocs(associatesRef);
       associatesSnapshot.forEach((docSnapshot) => {
@@ -71,7 +80,7 @@ const Specials = () => {
       console.error("Error fetching specials: ", error);
       setLoading(false);
     }
-  };
+  });
 
   // Function to handle toggling edit mode for an entire event
   const handleToggleEdit = (eventId) => {
@@ -206,7 +215,7 @@ const Specials = () => {
 
   useEffect(() => {
     fetchSpecialEvents();
-  }, []);
+  }, [showCompletedOrders]); // This will run when the component mounts and whenever showCompletedOrders changes
 
   if (loading) {
     return <div>Loading...</div>;
@@ -220,6 +229,17 @@ const Specials = () => {
       >
         New Event
       </NewEventButton>
+      <div style={{ marginBottom: "20px" }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={showCompletedOrders}
+            onChange={() => setShowCompletedOrders((prev) => !prev)}
+          />
+          Show Completed Orders
+        </label>
+      </div>
+
       {events.length === 0 ? (
         <p>No special events found.</p>
       ) : (
