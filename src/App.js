@@ -43,9 +43,10 @@ const App = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const [visible, setVisible] = useState(false);
-  const [message, setMessage] = useState("");
-  const [timestamp, setTimestamp] = useState(moment());
+  const [message, setMessage] = useState(""); // Default to empty string
+  const [timestamp, setTimestamp] = useState(null); // Default to null
   const popoverContentRef = useRef(null);
+  const timeoutRef = useRef(null); // Reference for the timeout
 
   // Fetch manager message from Firestore
   const fetchData = async () => {
@@ -53,8 +54,8 @@ const App = () => {
       const docRef = doc(db, "managerMessages", "currentMessage");
       const docSnapshot = await getDoc(docRef);
       if (docSnapshot.exists()) {
-        setMessage(docSnapshot.data().message);
-        setTimestamp(docSnapshot.data().timestamp);
+        setMessage(docSnapshot.data().message || ""); // Fallback to empty string
+        setTimestamp(docSnapshot.data().timestamp || moment()); // Fallback to current moment
       } else {
         console.log("No such document!");
       }
@@ -73,7 +74,10 @@ const App = () => {
           fetchData();
           setVisible(true); // Show the Popover
         } else {
-          setTimeout(checkVisibility, (3600 - diffInSeconds) * 1000); // Wait remaining seconds
+          timeoutRef.current = setTimeout(
+            checkVisibility,
+            (3600 - diffInSeconds) * 1000
+          ); // Wait remaining seconds
         }
       } else {
         const newTimestamp = moment();
@@ -83,7 +87,11 @@ const App = () => {
 
     checkVisibility();
 
-    return () => clearTimeout(); // Clean up timeouts
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current); // Clean up timeouts
+      }
+    };
   }, [timestamp]);
 
   useEffect(() => {
@@ -106,7 +114,7 @@ const App = () => {
     >
       <div
         dangerouslySetInnerHTML={{
-          __html: message, // Assuming the message contains HTML content
+          __html: message || "No message available.", // Provide default message
         }}
       />
       <Button onClick={closePopover}>Close</Button>
