@@ -17,7 +17,7 @@ import {
   DeleteOutlined,
   CloseCircleOutlined,
   SaveOutlined,
-} from "@ant-design/icons"; // Added CloseCircle for red X
+} from "@ant-design/icons";
 import { Modal } from "antd";
 
 // Styled components
@@ -103,6 +103,17 @@ const DeleteButton = styled.button`
   margin-left: 10px;
 `;
 
+const RoleCapsule = styled.span`
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  background-color: ${(props) => props.color || "#ddd"};
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
 const AssociatesPage = () => {
   const [associates, setAssociates] = useState([]);
   const [editing, setEditing] = useState({}); // To track which associate is being edited
@@ -110,8 +121,6 @@ const AssociatesPage = () => {
   useEffect(() => {
     const fetchAssociates = async () => {
       const associatesCollection = collection(db, "associates");
-
-      // Creating the query with orderBy and filtering out deleted associates
       const q = query(associatesCollection, orderBy("lastName"));
 
       const snapshot = await getDocs(q);
@@ -119,29 +128,22 @@ const AssociatesPage = () => {
         id: doc.id,
         ...doc.data(),
       }));
-      // Filter out the deleted associates
       setAssociates(associatesList.filter((associate) => !associate.deleted));
     };
 
     fetchAssociates();
   }, []);
 
-  // Function to handle the inline editing of the fields
-  // Function to handle the inline editing of the fields
   const handleChange = (e, id, field) => {
     const { value } = e.target;
-
     let formattedValue = value;
 
-    // Format phone number if the field is "phone"
     if (field === "phone") {
       formattedValue = phoneFormatter(value);
     }
 
-    // Validate and set email only if the field is "email" and it's a valid email
     if (field === "email" && !emailValidator(value)) {
-      // Optional: You could show an error message here
-      return; // If invalid, don't update the email field
+      return;
     }
 
     const updatedAssociates = associates.map((associate) =>
@@ -152,7 +154,6 @@ const AssociatesPage = () => {
     setAssociates(updatedAssociates);
   };
 
-  // Function to save the edited data to Firestore
   const handleSave = async (id, field) => {
     const associate = associates.find((a) => a.id === id);
     if (!associate) return;
@@ -167,20 +168,15 @@ const AssociatesPage = () => {
     }
   };
 
-  // Function to toggle the edit mode for a specific associate
   const toggleEdit = (id) => {
     setEditing((prev) => ({
       ...prev,
-      [id]: !prev[id], // Toggle the edit mode for this associate
+      [id]: !prev[id],
     }));
   };
 
-  // Simple phone number formatting (e.g., (123) 456-7890)
   const phoneFormatter = (value) => {
-    // Remove all non-numeric characters
     const cleaned = value.replace(/\D/g, "");
-
-    // Format the number as (xxx) xxx-xxxx
     const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
     if (match) {
       return `(${match[1]}) ${match[2]}-${match[3]}`;
@@ -188,13 +184,11 @@ const AssociatesPage = () => {
     return value;
   };
 
-  // Simple email validation
   const emailValidator = (value) => {
     const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return regex.test(value);
   };
 
-  // Function to handle the delete operation (soft delete - set deleted to true)
   const handleDelete = async (id) => {
     Modal.confirm({
       title: "Are you sure you want to mark this associate as deleted?",
@@ -205,9 +199,8 @@ const AssociatesPage = () => {
       onOk: async () => {
         try {
           await updateDoc(doc(db, "associates", id), {
-            deleted: true, // Mark as deleted
+            deleted: true,
           });
-          // Remove from the state by filtering out the deleted associate
           setAssociates(associates.filter((associate) => associate.id !== id));
           console.log("Associate marked as deleted.");
         } catch (error) {
@@ -217,7 +210,6 @@ const AssociatesPage = () => {
     });
   };
 
-  // Function to handle the creation of a new associate entry
   const handleNewAssociate = async () => {
     try {
       const newAssociateRef = await addDoc(collection(db, "associates"), {
@@ -236,21 +228,17 @@ const AssociatesPage = () => {
         updatedAt: new Date(),
       });
 
-      // Set this new associate as being edited
       setEditing((prev) => ({
         ...prev,
         [newAssociateRef.id]: true,
       }));
 
-      // Fetch associates again with ordering by lastName
       const q = query(collection(db, "associates"), orderBy("lastName"));
-
       const snapshot = await getDocs(q);
       const associatesList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      // Filter out the deleted associates
       setAssociates(associatesList.filter((associate) => !associate.deleted));
     } catch (error) {
       console.error("Error creating new associate:", error);
@@ -270,10 +258,10 @@ const AssociatesPage = () => {
                 <StatusIcon
                   color={
                     associate.minor
-                      ? "transparent" // Transparent background for minor (show outline circle)
+                      ? "transparent"
                       : associate.backgroundCheckDate
-                      ? "transparent" // Green for completed background check
-                      : "transparent" // Otherwise transparent background for X icon
+                      ? "transparent"
+                      : "transparent"
                   }
                 >
                   {associate.minor ? (
@@ -318,6 +306,11 @@ const AssociatesPage = () => {
                     <>
                       {associate.lastName}, {associate.firstName}
                     </>
+                  )}
+                  {associate.role && (
+                    <RoleCapsule color={associate.role.color}>
+                      {associate.role.name}
+                    </RoleCapsule>
                   )}
                 </AssociateName>
                 <AssociateLine>
@@ -365,7 +358,6 @@ const AssociatesPage = () => {
                     ""
                   )}
                 </AssociateLine>
-
                 <AssociateLine>
                   {editing[associate.id] ? (
                     <EditableInput

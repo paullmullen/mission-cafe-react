@@ -510,7 +510,6 @@ const Specials = () => {
                         <div>
                           {associates
                             .filter((staff) => !staff.deleted && staff.lastName) // Only include associates that are not deleted
-
                             .sort((a, b) =>
                               (a.lastName || "").localeCompare(b.lastName || "")
                             ) // Sort by last name alphabetically
@@ -533,6 +532,11 @@ const Specials = () => {
                                 />
                                 <label htmlFor={staff.id}>
                                   {staff.lastName}, {staff.firstName}
+                                  {staff.role && staff.role.name && (
+                                    <RoleCapsule color={staff.role.color}>
+                                      {staff.role.name}
+                                    </RoleCapsule>
+                                  )}
                                 </label>
                               </div>
                             ))}
@@ -545,6 +549,11 @@ const Specials = () => {
                               {staff
                                 ? `${staff.lastName}, ${staff.firstName}`
                                 : "Unknown staff member"}
+                              {staff.role && staff.role.name && (
+                                <RoleCapsule color={staff.role.color}>
+                                  {staff.role.name}
+                                </RoleCapsule>
+                              )}
                             </div>
                           ))
                       ) : (
@@ -644,6 +653,18 @@ const NewEventButton = styled.button`
     background-color: ${(props) =>
       props.disabled ? "gray" : "rgb(17, 17, 219)"};
   }
+`;
+
+const RoleCapsule = styled.span`
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: ${(props) => props.color || "#ccc"};
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
 `;
 
 export default Specials;
