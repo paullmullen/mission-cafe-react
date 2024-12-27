@@ -110,7 +110,7 @@ const App = () => {
     <div
       ref={popoverContentRef}
       tabIndex={-1} // Makes the div focusable
-      style={{ outline: "none" }} // Optional: Remove focus outline
+      style={{ outline: "none", fontSize: "1.5rem" }} // Increase font size here
     >
       <div
         dangerouslySetInnerHTML={{

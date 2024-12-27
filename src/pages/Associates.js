@@ -127,10 +127,26 @@ const AssociatesPage = () => {
   }, []);
 
   // Function to handle the inline editing of the fields
+  // Function to handle the inline editing of the fields
   const handleChange = (e, id, field) => {
+    const { value } = e.target;
+
+    let formattedValue = value;
+
+    // Format phone number if the field is "phone"
+    if (field === "phone") {
+      formattedValue = phoneFormatter(value);
+    }
+
+    // Validate and set email only if the field is "email" and it's a valid email
+    if (field === "email" && !emailValidator(value)) {
+      // Optional: You could show an error message here
+      return; // If invalid, don't update the email field
+    }
+
     const updatedAssociates = associates.map((associate) =>
       associate.id === id
-        ? { ...associate, [field]: e.target.value }
+        ? { ...associate, [field]: formattedValue }
         : associate
     );
     setAssociates(updatedAssociates);
@@ -157,6 +173,25 @@ const AssociatesPage = () => {
       ...prev,
       [id]: !prev[id], // Toggle the edit mode for this associate
     }));
+  };
+
+  // Simple phone number formatting (e.g., (123) 456-7890)
+  const phoneFormatter = (value) => {
+    // Remove all non-numeric characters
+    const cleaned = value.replace(/\D/g, "");
+
+    // Format the number as (xxx) xxx-xxxx
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+    if (match) {
+      return `(${match[1]}) ${match[2]}-${match[3]}`;
+    }
+    return value;
+  };
+
+  // Simple email validation
+  const emailValidator = (value) => {
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return regex.test(value);
   };
 
   // Function to handle the delete operation (soft delete - set deleted to true)
@@ -186,16 +221,16 @@ const AssociatesPage = () => {
   const handleNewAssociate = async () => {
     try {
       const newAssociateRef = await addDoc(collection(db, "associates"), {
-        firstName: null,
-        lastName: null,
-        email: null,
-        phone: null,
-        birthdate: null,
-        availability: null,
-        notes: null,
-        minor: null,
-        backgroundCheck: null,
-        backgroundCheckDate: null,
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        birthdate: "",
+        availability: "",
+        notes: "",
+        minor: false,
+        backgroundCheck: "",
+        backgroundCheckDate: "",
         deleted: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -207,12 +242,15 @@ const AssociatesPage = () => {
         [newAssociateRef.id]: true,
       }));
 
-      // Fetch associates again to include the newly created associate
-      const snapshot = await getDocs(collection(db, "associates"));
+      // Fetch associates again with ordering by lastName
+      const q = query(collection(db, "associates"), orderBy("lastName"));
+
+      const snapshot = await getDocs(q);
       const associatesList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
+      // Filter out the deleted associates
       setAssociates(associatesList.filter((associate) => !associate.deleted));
     } catch (error) {
       console.error("Error creating new associate:", error);

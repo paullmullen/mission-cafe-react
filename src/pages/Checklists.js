@@ -37,28 +37,28 @@ const TabWrapper = styled.div`
 `;
 
 const ChecklistRow = styled(Row)`
-  margin-bottom: 12px;
+  margin-bottom: 24px;
 `;
 
 const ChecklistText = styled(Col)`
-  font-size: 16px;
+  font-size: 24px;
 `;
 
 const ChecklistCheckbox = styled(Col)`
-  font-size: 16px;
+  font-size: 24px;
 `;
 
 const ClearButton = styled(Button)`
-  font-size: 16px;
+  font-size: 24px;
 `;
 
 const ChecklistHeader = styled.h3`
-  font-size: 16px;
+  font-size: 24px;
   margin-bottom: 8px;
 `;
 
 const ModalText = styled.p`
-  font-size: 16px;
+  font-size: 24px;
 `;
 
 const Checklists = () => {
