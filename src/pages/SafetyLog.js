@@ -64,6 +64,10 @@ const Button = styled.button`
   }
 `;
 
+const FormContainer = styled.div`
+  font-size: 1.2rem; /* Set default font size for the form */
+`;
+
 // Safety state
 const Safety = () => {
   const [formData, setFormData] = useState({});
@@ -249,76 +253,78 @@ const Safety = () => {
 
   return (
     <div>
-      <form onSubmit={handleSave}>
-        <Table>
-          <thead>
-            <TableRow>
-              <TableHeader>Food Safety Element</TableHeader>
-              <TableHeader>Measurement</TableHeader>
-            </TableRow>
-          </thead>
-          <tbody>
-            {safetyItems.map((item) => (
-              <TableRow key={item.name}>
+      <FormContainer>
+        <form onSubmit={handleSave}>
+          <Table>
+            <thead>
+              <TableRow>
+                <TableHeader>Food Safety Element</TableHeader>
+                <TableHeader>Measurement</TableHeader>
+              </TableRow>
+            </thead>
+            <tbody>
+              {safetyItems.map((item) => (
+                <TableRow key={item.name}>
+                  <TableData>
+                    {item.label} ({getRangeText(item)}
+                    {item.unit})
+                  </TableData>
+                  <TableData>
+                    <div>
+                      <Input
+                        type="number"
+                        name={item.name}
+                        value={formData[item.name] || ""}
+                        onChange={handleChange}
+                        placeholder={`Enter ${item.label}`}
+                        {...getInputStyle(item.name, formData[item.name])}
+                      />
+                    </div>
+                  </TableData>
+                </TableRow>
+              ))}
+              {/* Safety Topic Row */}
+              <TableRow>
+                <TableData>Safety Briefing Topic Discussed</TableData>
                 <TableData>
-                  {item.label} ({getRangeText(item)}
-                  {item.unit})
-                </TableData>
-                <TableData>
-                  <div>
-                    <Input
-                      type="number"
-                      name={item.name}
-                      value={formData[item.name] || ""}
-                      onChange={handleChange}
-                      placeholder={`Enter ${item.label}`}
-                      {...getInputStyle(item.name, formData[item.name])}
-                    />
-                  </div>
+                  <Textarea
+                    name="Safety Briefing"
+                    value={formData["Safety Briefing"] || ""}
+                    onChange={handleChange}
+                    placeholder="Safety Briefing Topic Discussed"
+                  />
                 </TableData>
               </TableRow>
-            ))}
-            {/* Safety Topic Row */}
-            <TableRow>
-              <TableData>Safety Briefing Topic Discussed</TableData>
-              <TableData>
-                <Textarea
-                  name="Safety Briefing"
-                  value={formData["Safety Briefing"] || ""}
-                  onChange={handleChange}
-                  placeholder="Safety Briefing Topic Discussed"
-                />
-              </TableData>
-            </TableRow>
-            {/* Recorded By Row */}
-            <TableRow>
-              <TableData>Recorded By</TableData>
-              <TableData>
-                <Input
-                  type="text"
-                  name="Recorded By"
-                  value={formData["Recorded By"] || ""}
-                  onChange={handleChange}
-                  placeholder="Enter your name or initials"
-                />
-              </TableData>
-            </TableRow>
-            {/* Notes Row */}
-            <TableRow>
-              <TableData>Notes</TableData>
-              <TableData>
-                <Textarea
-                  name="Notes"
-                  value={formData["Notes"] || ""}
-                  onChange={handleChange}
-                  placeholder="Enter any notes"
-                />
-              </TableData>
-            </TableRow>
-          </tbody>
-        </Table>
-        <Button type="submit">Save Record</Button>
-      </form>
+              {/* Recorded By Row */}
+              <TableRow>
+                <TableData>Recorded By</TableData>
+                <TableData>
+                  <Input
+                    type="text"
+                    name="Recorded By"
+                    value={formData["Recorded By"] || ""}
+                    onChange={handleChange}
+                    placeholder="Enter your name or initials"
+                  />
+                </TableData>
+              </TableRow>
+              {/* Notes Row */}
+              <TableRow>
+                <TableData>Notes</TableData>
+                <TableData>
+                  <Textarea
+                    name="Notes"
+                    value={formData["Notes"] || ""}
+                    onChange={handleChange}
+                    placeholder="Enter any notes"
+                  />
+                </TableData>
+              </TableRow>
+            </tbody>
+          </Table>
+          <Button type="submit">Save Record</Button>
+        </form>
+      </FormContainer>
     </div>
   );
 };

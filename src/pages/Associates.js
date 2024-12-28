@@ -23,6 +23,7 @@ import { Modal } from "antd";
 // Styled components
 const Container = styled.div`
   margin: 20px;
+  font-size: 1.5rem;
 `;
 const NewAssociateButton = styled.button`
   background-color: rgb(17, 17, 219);
@@ -40,16 +41,6 @@ const NewAssociateButton = styled.button`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-`;
-
-const TableHead = styled.th`
-  padding: 10px;
-  text-align: left;
-  font-weight: bold;
-`;
-
-const TableRow = styled.tr`
-  border-bottom: 1px solid #ddd;
 `;
 
 const TableData = styled.td`
@@ -255,20 +246,19 @@ const AssociatesPage = () => {
           {associates.map((associate) => (
             <AssociateRow key={associate.id}>
               <TableData>
-                <StatusIcon
-                  color={
-                    associate.minor
-                      ? "transparent"
-                      : associate.backgroundCheckDate
-                      ? "transparent"
-                      : "transparent"
-                  }
-                >
-                  {associate.minor ? (
+                <StatusIcon>
+                  {new Date().getFullYear() -
+                    new Date(associate.birthdate).getFullYear() <
+                  15 ? (
                     <UserSwitchOutlined
                       style={{ fontSize: "20px", color: "lightgreen" }}
                     />
-                  ) : associate.backgroundCheck ? (
+                  ) : // Check if the background check date is within the last 2 years
+                  associate.backgroundCheckDate &&
+                    new Date(associate.backgroundCheckDate.toDate()) >
+                      new Date(
+                        new Date().setFullYear(new Date().getFullYear() - 2)
+                      ) ? (
                     <SecurityScanOutlined
                       style={{ fontSize: "20px", color: "green" }}
                     />
