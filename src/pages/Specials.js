@@ -395,7 +395,7 @@ const Specials = () => {
                   </TableRow>
 
                   <TableRow>
-                    <TableHeader>Start Time:</TableHeader>
+                    <TableHeader>Ending Time:</TableHeader>
                     <TableData>
                       {
                         event.isEditMode ? (
