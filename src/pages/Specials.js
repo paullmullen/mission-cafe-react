@@ -108,7 +108,6 @@ const Specials = () => {
 
   // Function to handle updating a specific field of an event
   const handleEdit = (eventId, field, value) => {
-    console.log(eventId, field, value);
     setEvents((prevEvents) =>
       prevEvents.map((event) =>
         event.id === eventId ? { ...event, [field]: value } : event
@@ -119,8 +118,6 @@ const Specials = () => {
   // Function to save edited fields to Firestore
   const handleSave = async (eventId) => {
     const event = events.find((event) => event.id === eventId);
-
-    console.log(eventId);
 
     if (!event) return; // Make sure the event exists
 
@@ -135,6 +132,8 @@ const Specials = () => {
         orderComplete: event.orderComplete,
         endTime: event.endTime,
         payment: event.payment,
+        event: event.event,
+        eventType: event.eventType,
 
         staff: selectedStaff[eventId] || [], // Save the selected staff
       });
@@ -144,7 +143,6 @@ const Specials = () => {
   };
 
   const handleStaffChange = (staffId, eventId) => {
-    console.log(staffId, eventId);
     setSelectedStaff((prevSelectedStaff) => {
       const eventStaff = prevSelectedStaff[eventId] || [];
 
