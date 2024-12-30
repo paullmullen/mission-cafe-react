@@ -167,7 +167,7 @@ const Specials = () => {
 
   const handleNewEvent = async () => {
     try {
-      // Create a new event document with initial empty values
+      // Create a new event document with initial empty values in Firestore
       const newEventRef = await addDoc(collection(db, "special-events"), {
         eventType: "", // Default to empty string
         event: "",
@@ -184,28 +184,25 @@ const Specials = () => {
         updatedAt: new Date(),
       });
 
-      // Set this new event as being edited
-      setEvents(
-        (prev) =>
-          [
-            ...prev,
-            {
-              id: newEventRef.id,
-              eventType: String,
-              event: String,
-              startTime: new Date(),
-              endTime: new Date(),
-              location: String,
-              contactPerson: String,
-              orderComplete: Boolean,
-              contactPhone: String,
-              orderDetails: String,
-              payment: String,
-              staff: [],
-              isEditMode: true, // Start in edit mode
-            },
-          ].sort((a, b) => a.startTime - b.startTime) // Sorting by startTime (optional)
-      );
+      // Fetch the new event's data to match Firestore's structure
+      const newEvent = {
+        id: newEventRef.id, // Use the generated document ID
+        eventType: "",
+        event: "",
+        startTime: new Date(),
+        endTime: new Date(),
+        location: "",
+        contactPerson: "",
+        contactPhone: "",
+        orderDetails: "",
+        orderComplete: false,
+        payment: "",
+        staff: [],
+        isEditMode: true, // Allow editing immediately
+      };
+
+      // Update local state with the new event
+      setEvents((prev) => [...prev, newEvent]);
     } catch (error) {
       console.error("Error creating new event:", error);
     }
@@ -386,8 +383,13 @@ const Specials = () => {
                             event.startTime.toDate
                               ? event.startTime.toDate()
                               : event.startTime
-                          ).toLocaleString() // Display formatted date
+                          ).toLocaleString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
                         ) : (
+                          // Display formatted date
                           "No Start Time"
                         ) // Handle case where startTime is null or undefined
                       }
@@ -440,7 +442,11 @@ const Specials = () => {
                             event.endTime.toDate
                               ? event.endTime.toDate()
                               : event.endTime
-                          ).toLocaleString() // Display formatted date
+                          ).toLocaleString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          }) // Display formatted date
                         ) : (
                           "No End Time"
                         ) // Handle case where endTime is null or undefined
