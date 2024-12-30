@@ -12,13 +12,13 @@ import { db } from "../firebase/firebase"; // Adjust path as needed
 
 import {
   collection,
-  getDocs,
   doc,
   updateDoc,
   query,
   where,
   orderBy,
   writeBatch,
+  onSnapshot,
 } from "firebase/firestore";
 import styled from "styled-components";
 
@@ -67,29 +67,33 @@ const Checklists = () => {
   const [clearModalVisible, setClearModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("Opening");
 
-  const fetchChecklistData = async (category) => {
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, "checklists"),
-        where("category", "==", category),
-        orderBy("order")
-      );
-      const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setChecklistData(data);
-    } catch (error) {
-      toast.error("Error fetching checklists");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchChecklistData(activeTab);
+    setLoading(true);
+    const q = query(
+      collection(db, "checklists"),
+      where("category", "==", activeTab),
+      orderBy("order")
+    );
+
+    // Attach the real-time listener
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setChecklistData(data);
+        setLoading(false);
+      },
+      (error) => {
+        toast.error("Error fetching checklists in real-time");
+        setLoading(false);
+      }
+    );
+
+    // Cleanup listener when the component unmounts or activeTab changes
+    return () => unsubscribe();
   }, [activeTab]);
 
   const handleCheckboxChange = async (taskId, checked) => {
