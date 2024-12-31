@@ -9,6 +9,8 @@ import {
   doc,
   arrayUnion,
   orderBy,
+  addDoc,
+  getDoc,
 } from "firebase/firestore";
 import { toast } from "react-toastify";
 
@@ -244,21 +246,85 @@ const MaintenancePage = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (taskId) => {
+  const resetFields = (taskId) => {
+    console.log(taskId);
+
+    // Reset form data
+    setFormData((prev) => ({
+      ...prev,
+      [taskId]: {
+        name: "",
+        notes: "",
+        checkboxes: {}, // Reset all checkboxes
+      },
+    }));
+
+    // Reset checkbox instructions
+    setCheckedInstructions((prev) => ({
+      ...prev,
+      [taskId]: {}, // Clear all checkboxes for this task
+    }));
+  };
+
+  const handleSubmit = async (taskId) => {
     const completedData = {
       by: formData.by,
       date: new Date(),
       notes: formData.notes,
     };
 
-    addCompletionToHistory(taskId, completedData);
-    setFormData({ by: "", notes: "" });
+    try {
+      // Save the completed task data to the `completed` array in Firestore
+      const taskRef = doc(db, "maintenance", taskId); // Reference to the specific task document
 
-    // Reset the checkboxes after submitting
-    setCheckedInstructions((prev) => ({
-      ...prev,
-      [taskId]: prev[taskId].map(() => false),
-    }));
+      await updateDoc(taskRef, {
+        completed: arrayUnion(completedData),
+      });
+
+      // Check if notes are not blank and send an email to managers
+      if (formData.notes.trim() !== "") {
+        // Fetch the task name from the maintenance document
+        const taskDoc = await getDoc(taskRef);
+
+        if (!taskDoc.exists()) {
+          throw new Error("Task does not exist");
+        }
+
+        const taskName = taskDoc.data().name;
+
+        // Get manager emails
+        const managersSnapshot = await getDocs(collection(db, "managers"));
+        const managersEmails = managersSnapshot.docs.map(
+          (doc) => doc.data().email
+        );
+
+        // Prepare email content
+        const htmlContent = `
+        <p><strong>Maintenance Task:</strong> ${taskName}</p>
+        <p><strong>Completed By:</strong> ${formData.by}</p>
+        <p><strong>Notes:</strong> ${formData.notes}</p>
+      `;
+
+        // Send email
+        await addDoc(collection(db, "mail"), {
+          to: managersEmails,
+          message: {
+            subject: "Maintenance Checklist Update - Notes Added",
+            html: htmlContent, // Only send HTML content
+          },
+        });
+
+        toast.success("Email sent to managers about the notes!");
+      } else {
+        toast.success("Task completed without notes.");
+      }
+
+      // Reset fields after task submission
+      resetFields(taskId);
+    } catch (error) {
+      toast.error("Error completing maintenance task or sending email");
+      console.error(error);
+    }
   };
 
   return (
