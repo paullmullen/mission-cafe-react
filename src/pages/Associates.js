@@ -236,6 +236,22 @@ const AssociatesPage = () => {
     }
   };
 
+  const copyEmailsToClipboard = () => {
+    const emailString = associates
+      .map((associate) => associate.email)
+      .filter((email) => email) // Filter out any undefined or null emails
+      .join("; ");
+
+    navigator.clipboard
+      .writeText(emailString)
+      .then(() => {
+        alert("Emails copied to clipboard!");
+      })
+      .catch((error) => {
+        console.error("Error copying emails:", error);
+      });
+  };
+
   return (
     <Container>
       <NewAssociateButton onClick={handleNewAssociate}>
@@ -395,6 +411,10 @@ const AssociatesPage = () => {
           ))}
         </tbody>
       </Table>
+      <br></br>
+      <NewAssociateButton onClick={copyEmailsToClipboard}>
+        Copy Emails
+      </NewAssociateButton>
     </Container>
   );
 };
