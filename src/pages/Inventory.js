@@ -9,6 +9,9 @@ import {
   updateDoc,
   getDoc,
   deleteDoc,
+  onSnapshot,
+  orderBy,
+  query,
 } from "firebase/firestore";
 import styled from "styled-components";
 
@@ -35,38 +38,47 @@ const InventoryPage = () => {
   const [loading, setLoading] = useState(true);
   const [extraNotes, setExtraNotes] = useState(""); // State variable for extra notes
 
-  // Fetch data from Firestore
-  const fetchInventoryData = async () => {
-    setLoading(true);
-    try {
-      const querySnapshot = await getDocs(collection(db, "inventory"));
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setInventoryData(data);
-    } catch (error) {
-      toast.error("Error fetching inventory data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchExtraNotes = async () => {
-    try {
-      const docRef = doc(db, "notes", "currentNote");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setExtraNotes(docSnap.data().note || ""); // Set initial value for extraNotes
-      }
-    } catch (error) {
-      toast.error("Error fetching extra notes");
-    }
-  };
-
   useEffect(() => {
-    fetchInventoryData();
-    fetchExtraNotes();
+    setLoading(true);
+
+    // Real-time listener for inventory data
+    const inventoryQuery = query(collection(db, "inventory"), orderBy("name")); // Adjust orderBy field as needed
+    const unsubscribeInventory = onSnapshot(
+      inventoryQuery,
+      (querySnapshot) => {
+        const data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setInventoryData(data);
+        setLoading(false);
+      },
+      (error) => {
+        toast.error("Error fetching inventory in real-time");
+        setLoading(false);
+      }
+    );
+
+    const docRef = doc(db, "notes", "currentNote");
+    const unsubscribeNotes = onSnapshot(
+      docRef,
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          setExtraNotes(docSnapshot.data().note); // Assuming `setExtraNotes` is your state updater for notes
+        } else {
+          console.error("Document not found!");
+        }
+      },
+      (error) => {
+        toast.error("Error fetching extra notes in real-time");
+      }
+    );
+
+    // Cleanup listeners on unmount
+    return () => {
+      unsubscribeInventory();
+      unsubscribeNotes();
+    };
   }, []);
 
   // Handle changes in current value
@@ -195,6 +207,7 @@ const InventoryPage = () => {
   const sortedCategories = Object.keys(groupedData).sort();
 
   const updateExtraNotesInFirestore = async (newNotes) => {
+    console.log("updateExtraNotes");
     try {
       const docRef = doc(db, "notes", "currentNote");
       await updateDoc(docRef, { note: newNotes });
@@ -204,6 +217,7 @@ const InventoryPage = () => {
   };
 
   const handleBlur = async (e) => {
+    console.log("handleblur");
     const newNotes = e.target.value;
     setExtraNotes(newNotes); // Update state
     await updateExtraNotesInFirestore(newNotes); // Update Firestore
@@ -260,22 +274,6 @@ const InventoryPage = () => {
                 dataIndex: "units",
                 key: "units",
                 width: "15%",
-              },
-              {
-                title: "Notes",
-                dataIndex: "notes",
-                key: "notes",
-                width: "35%",
-                render: (text, record) => (
-                  <NotesInput
-                    value={text}
-                    onChange={(e) =>
-                      handleNotesChange(record.id, e.target.value)
-                    }
-                    onBlur={(e) => handleNotesBlur(record.id, e.target.value)}
-                    placeholder="Enter notes here"
-                  />
-                ),
               },
             ]}
             rowKey="id"
