@@ -244,9 +244,7 @@ const AssociatesPage = () => {
 
     navigator.clipboard
       .writeText(emailString)
-      .then(() => {
-        alert("Emails copied to clipboard!");
-      })
+      .then(() => {})
       .catch((error) => {
         console.error("Error copying emails:", error);
       });
