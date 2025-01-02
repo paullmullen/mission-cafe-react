@@ -12,6 +12,8 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import styled from "styled-components";
+import { Line } from "react-chartjs-2";
+import "chart.js/auto"; // Required for Chart.js
 
 // Styled components
 const Table = styled.table`
@@ -73,48 +75,42 @@ const Safety = () => {
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(true);
   const [safetyItems, setSafetyItems] = useState([]);
+  const [historicalData, setHistoricalData] = useState({});
 
   useEffect(() => {
     const fetchSafetyItems = async () => {
       try {
-        // Fetch safety items (concepts, units, etc.) from safety-specs collection
         const querySnapshot = await getDocs(collection(db, "safety-specs"));
         const items = querySnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
-            name: doc.id, // document ID used as the name
+            name: doc.id,
             label: data.name,
-            unit: data.units || "", // default to empty if no units
-            lowerSpec: data.lowerSpec || null, // add lowerSpec
-            upperSpec: data.upperSpec || null, // add upperSpec
+            unit: data.units || "",
+            lowerSpec: data.lowerSpec || null,
+            upperSpec: data.upperSpec || null,
             category: data.category || null,
           };
         });
-        const sortedItems = items.sort((a, b) => {
-          if (a.category < b.category) return -1;
-          if (a.category > b.category) return 1;
-          return 0;
-        });
-
+        const sortedItems = items.sort((a, b) =>
+          a.category < b.category ? -1 : 1
+        );
         setSafetyItems(sortedItems);
-        setSafetyItems(items);
       } catch (error) {
         console.error("Error fetching safety items:", error);
       }
     };
 
     fetchSafetyItems();
-  }, []);
+  }, []); // Runs once when the component mounts
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get today's date
         const today = new Date();
         const startOfDay = new Date(today.setHours(0, 0, 0, 0));
         const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
-        // Fetch records for today
         const q = query(
           collection(db, "safety-record"),
           where("date", ">=", Timestamp.fromDate(startOfDay)),
@@ -126,7 +122,6 @@ const Safety = () => {
         const data = querySnapshot.docs.map((doc) => doc.data());
 
         if (data.length > 0) {
-          // If we have records, preload the form with the first one
           const record = data[0];
           const preloadedData = {};
           record.measurements.forEach((item) => {
@@ -137,7 +132,6 @@ const Safety = () => {
           preloadedData["Recorded By"] = record.recordedBy || "";
           setFormData(preloadedData);
         } else {
-          // If no records, initialize the form with empty values
           const initialData = {};
           safetyItems.forEach((item) => {
             initialData[item.name] = "";
@@ -157,7 +151,51 @@ const Safety = () => {
     if (safetyItems.length > 0) {
       fetchData();
     }
-  }, [safetyItems]); // Dependency on safetyItems to trigger data fetching after loading safety items
+  }, [safetyItems]); // Runs whenever safetyItems is updated
+
+  useEffect(() => {
+    const fetchHistoricalData = async () => {
+      const now = new Date();
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(now.getDate() - 90);
+
+      const data = {};
+
+      try {
+        for (const item of safetyItems) {
+          const q = query(
+            collection(db, "safety-record"),
+            where("date", ">=", Timestamp.fromDate(ninetyDaysAgo)),
+            orderBy("date")
+          );
+
+          const querySnapshot = await getDocs(q);
+          const itemData = querySnapshot.docs.map((doc) => {
+            const record = doc.data();
+            const measurement = record.measurements.find(
+              (m) => m.name === item.name
+            );
+            return {
+              date: record.date.toDate(),
+              value: measurement?.value || 0,
+            };
+          });
+
+          data[item.name] = itemData;
+        }
+
+        setHistoricalData(data);
+      } catch (error) {
+        console.error("Error fetching historical data:", error);
+      } finally {
+        setLoading(false); // Loading is done after fetching historical data
+      }
+    };
+
+    if (safetyItems.length > 0) {
+      fetchHistoricalData();
+    }
+  }, [safetyItems]); // Runs whenever safetyItems is updated
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -250,6 +288,43 @@ const Safety = () => {
   if (loading) {
     return <div>Loading...</div>;
   }
+  const renderGraph = (itemName) => {
+    const data = historicalData[itemName];
+    if (!data) return null;
+
+    const chartData = {
+      labels: data.map((d) => d.date.toLocaleDateString()),
+      datasets: [
+        {
+          data: data.map((d) => d.value),
+          borderColor: "rgba(75,192,192,1)",
+          backgroundColor: "rgba(75,192,192,0.2)",
+        },
+      ],
+    };
+
+    const chartOptions = {
+      plugins: {
+        legend: {
+          display: false, // Hides the legend
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: false,
+          },
+        },
+        y: {
+          title: {
+            display: false,
+          },
+        },
+      },
+    };
+
+    return <Line data={chartData} options={chartOptions} height={75} />;
+  };
 
   return (
     <div>
@@ -264,24 +339,36 @@ const Safety = () => {
             </thead>
             <tbody>
               {safetyItems.map((item) => (
-                <TableRow key={item.name}>
-                  <TableData>
-                    {item.label} ({getRangeText(item)}
-                    {item.unit})
-                  </TableData>
-                  <TableData>
-                    <div>
-                      <Input
-                        type="number"
-                        name={item.name}
-                        value={formData[item.name] || ""}
-                        onChange={handleChange}
-                        placeholder={`Enter ${item.label}`}
-                        {...getInputStyle(item.name, formData[item.name])}
-                      />
-                    </div>
-                  </TableData>
-                </TableRow>
+                <React.Fragment key={item.name}>
+                  {/* Row for the input field */}
+                  <TableRow>
+                    <TableData>
+                      {item.label} ({getRangeText(item)}
+                      {item.unit})
+                    </TableData>
+                    <TableData>
+                      <div>
+                        <Input
+                          type="number"
+                          name={item.name}
+                          value={formData[item.name] || ""}
+                          onChange={handleChange}
+                          placeholder={`Enter ${item.label}`}
+                          {...getInputStyle(item.name, formData[item.name])}
+                        />
+                      </div>
+                    </TableData>
+                  </TableRow>
+
+                  {/* Row for the graph */}
+                  <TableRow>
+                    <TableData colSpan={2} style={{ padding: "10px" }}>
+                      <h3>{item.label} Historical Data</h3>
+                      {renderGraph(item.name)}{" "}
+                      {/* This renders the graph for the safety item */}
+                    </TableData>
+                  </TableRow>
+                </React.Fragment>
               ))}
               {/* Safety Topic Row */}
               <TableRow>
