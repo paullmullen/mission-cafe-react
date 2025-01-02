@@ -10,6 +10,7 @@ import {
   addDoc,
   doc,
   updateDoc,
+  onSnapshot, // Added for real-time listener
 } from "firebase/firestore";
 import styled from "styled-components";
 import { Line } from "react-chartjs-2";
@@ -79,6 +80,7 @@ const Safety = () => {
 
   useEffect(() => {
     const fetchSafetyItems = async () => {
+      //this gets a list of the items we're tracking, not their values... that's in fetchData
       try {
         const querySnapshot = await getDocs(collection(db, "safety-specs"));
         const items = querySnapshot.docs.map((doc) => {
@@ -138,7 +140,7 @@ const Safety = () => {
           });
           initialData["Safety Briefing Topic Discussed"] = "";
           initialData["Recorded By"] = "";
-          initialData["Notes"] = ""; // Initialize Notes field
+          initialData["Notes"] = "";
           setFormData(initialData);
         }
       } catch (error) {
@@ -151,7 +153,7 @@ const Safety = () => {
     if (safetyItems.length > 0) {
       fetchData();
     }
-  }, [safetyItems]); // Runs whenever safetyItems is updated
+  }, [safetyItems]); // Re-fetch form data when safetyItems change
 
   useEffect(() => {
     const fetchHistoricalData = async () => {
@@ -188,21 +190,96 @@ const Safety = () => {
       } catch (error) {
         console.error("Error fetching historical data:", error);
       } finally {
-        setLoading(false); // Loading is done after fetching historical data
+        setLoading(false);
       }
     };
 
     if (safetyItems.length > 0) {
       fetchHistoricalData();
     }
-  }, [safetyItems]); // Runs whenever safetyItems is updated
+  }, [safetyItems]); // Re-fetch historical data when safetyItems change
 
-  const handleChange = (e) => {
+  // Real-time listener for updates to safety records
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "safety-record"),
+      (querySnapshot) => {
+        const updatedData = {};
+        querySnapshot.docs.forEach((doc) => {
+          const record = doc.data();
+          record.measurements.forEach((item) => {
+            if (!updatedData[item.name]) {
+              updatedData[item.name] = [];
+            }
+            updatedData[item.name].push({
+              date: record.date.toDate(),
+              value: item.value,
+            });
+          });
+        });
+        setHistoricalData(updatedData);
+      },
+      (error) => {
+        console.error("Error with real-time listener:", error);
+      }
+    );
+
+    return () => unsubscribe(); // Clean up listener when the component unmounts
+  }, []); // Runs once when the component mounts
+
+  const handleChange = async (e) => {
     const { name, value } = e.target;
+
+    // Update local form state
     setFormData((prevState) => ({
       ...prevState,
       [name]: value,
     }));
+
+    try {
+      // Prepare updated measurements
+      const newMeasurements = safetyItems.map((item) => ({
+        name: item.name,
+        value: formData[item.name] || "",
+      }));
+
+      // Create the updated record
+      const newRecord = {
+        date: Timestamp.now(),
+        recordedBy: formData["Recorded By"] || "Unknown", // Fallback if empty
+        measurements: newMeasurements,
+        safetyTopic: formData["Safety Briefing"] || "",
+        notes: formData["Notes"] || "", // Save notes if present
+      };
+
+      // Get today's date to check for existing record
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+      // Check if there's an existing record for today
+      const q = query(
+        collection(db, "safety-record"),
+        where("date", ">=", Timestamp.fromDate(startOfDay)),
+        where("date", "<=", Timestamp.fromDate(endOfDay)),
+        orderBy("date")
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        // If no records exist for today, create a new document
+        await addDoc(collection(db, "safety-record"), newRecord);
+        console.log("New safety record added successfully");
+      } else {
+        // If records exist, update the existing document
+        const docId = querySnapshot.docs[0].id;
+        await updateDoc(doc(db, "safety-record", docId), newRecord);
+        console.log(`Updated safety record with ID: ${docId}`);
+      }
+    } catch (error) {
+      console.error("Error updating record:", error);
+    }
   };
 
   const handleSave = async (e) => {
@@ -288,6 +365,7 @@ const Safety = () => {
   if (loading) {
     return <div>Loading...</div>;
   }
+
   const renderGraph = (itemName) => {
     const data = historicalData[itemName];
     if (!data) return null;
@@ -363,7 +441,6 @@ const Safety = () => {
                   {/* Row for the graph */}
                   <TableRow>
                     <TableData colSpan={2} style={{ padding: "10px" }}>
-                      <h3>{item.label} Historical Data</h3>
                       {renderGraph(item.name)}{" "}
                       {/* This renders the graph for the safety item */}
                     </TableData>
