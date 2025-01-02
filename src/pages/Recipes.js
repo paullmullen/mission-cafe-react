@@ -94,13 +94,40 @@ const App = () => {
       return;
     }
 
+    const recipeName =
+      items.find((item) => item.key === key)?.name || "Unknown";
+
     try {
+      // Get manager emails
+      const managersSnapshot = await getDocs(collection(db, "managers"));
+      const managersEmails = managersSnapshot.docs.map(
+        (doc) => doc.data().email
+      );
+
+      // Add feedback to the issues collection
       await addDoc(collection(db, "issues"), {
         date: serverTimestamp(),
         description: feedback,
-        recipe: items.find((item) => item.key === key)?.name || "Unknown",
+        recipe: recipeName,
         resolved: false,
         name, // Store the submitter's name
+      });
+
+      // Prepare HTML content for the email
+      const htmlContent = `
+      <p>A new feedback has been submitted:</p>
+      <p><strong>Recipe:</strong> ${recipeName}</p>
+      <p><strong>Feedback:</strong> ${feedback}</p>
+      <p><strong>Submitted by:</strong> ${name}</p>
+    `;
+
+      // Add email notification to the mail collection
+      await addDoc(collection(db, "mail"), {
+        to: managersEmails, // Ensure this is an array of manager email addresses
+        message: {
+          subject: `New Feedback Submitted for Recipe: ${recipeName}`,
+          html: htmlContent, // HTML content for the email
+        },
       });
 
       message.success("Thank you for your feedback! It has been submitted.");
