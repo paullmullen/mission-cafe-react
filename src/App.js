@@ -22,10 +22,15 @@ const AppHeader = ({ toggleSider }) => {
   return (
     <Header
       style={{
+        position: "fixed",
+        top: 0,
+        width: "100%",
         background: "#fff",
         padding: "10px 20px",
         display: "flex",
         alignItems: "center",
+        zIndex: 1000, // Ensure it stays above other elements
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", // Optional for aesthetics
       }}
     >
       <Button
@@ -130,7 +135,15 @@ const App = () => {
         onCollapse={setCollapsed}
         width={200}
         collapsedWidth={0}
-        style={{ background: "#001529" }}
+        style={{
+          position: "fixed",
+          top: "64px", // Offset for the header height
+          left: 0,
+          height: "calc(100vh - 64px)", // Adjust height to fit below the header
+          background: "#001529",
+          zIndex: 1000,
+          overflow: "hidden",
+        }}
       >
         <Menu
           theme="dark"
@@ -169,7 +182,7 @@ const App = () => {
         />
 
         {/* Main Content */}
-        <Content style={{ padding: 20 }}>
+        <Content style={{ padding: "20px", marginTop: "64px" }}>
           <Routes>
             {routes.map((route) => (
               <Route
