@@ -25,7 +25,7 @@ const currencyData = [
 // Styled Components
 const CalculatorContainer = styled.div`
   padding: 16px;
-  font-size: 16px;
+  font-size: 2rem;
 `;
 
 const TableWrapper = styled.div`
@@ -74,7 +74,7 @@ const Calculator = () => {
       title: "Currency",
       dataIndex: "name",
       key: "name",
-      render: (text) => <span>{text}</span>,
+      render: (text) => <span style={{ fontSize: "1.5rem" }}>{text}</span>,
       align: "left",
     },
     {
@@ -87,7 +87,7 @@ const Calculator = () => {
           value={counts[record.name]}
           onChange={(e) => handleChange(e, record.name)}
           min={0}
-          style={{ width: "80px", textAlign: "right" }}
+          style={{ width: "80px", textAlign: "right", fontSize: "1.5rem" }}
         />
       ),
       align: "right",
@@ -99,7 +99,9 @@ const Calculator = () => {
       render: (text, record) => {
         const totalValue = counts[record.name] * record.value;
         return (
-          <span style={{ textAlign: "right" }}>${totalValue.toFixed(2)}</span>
+          <span style={{ textAlign: "right", fontSize: "1.5rem" }}>
+            ${totalValue.toFixed(2)}
+          </span>
         );
       },
       align: "right",
