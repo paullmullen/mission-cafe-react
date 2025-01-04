@@ -6,7 +6,7 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import { Layout, Button, Popover, Menu } from "antd";
+import { Layout, Button, Popover, Menu } from "antd"; // Import Menu component here
 import routes from "./pages/routes";
 import {
   doc,
@@ -67,10 +67,33 @@ const SafetyCapsule = styled(Link)`
   }
 `;
 
+// Styled Component for the warning capsule (Special Event)
+const SpecialEventCapsule = styled(Link)`
+  background-color: blue;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  line-height: 40px;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: darkblue;
+  }
+`;
+
 const AppHeader = ({
   toggleSider,
   maintenanceWarningVisible,
   safetyWarningVisible,
+  specialEventWarningVisible,
 }) => {
   const location = useLocation();
   const route = routes.find((r) => r.path === location.pathname);
@@ -109,6 +132,13 @@ const AppHeader = ({
       {safetyWarningVisible && (
         <SafetyCapsule to="/safetylog">Safety Items Incomplete</SafetyCapsule>
       )}
+
+      {/* Special Event Warning Button */}
+      {specialEventWarningVisible && (
+        <SpecialEventCapsule to="/specialeventlog">
+          Special Event Coming Up
+        </SpecialEventCapsule>
+      )}
     </Header>
   );
 };
@@ -122,6 +152,8 @@ const App = () => {
   const [maintenanceData, setMaintenanceData] = useState([]);
   const [safetyWarningVisible, setSafetyWarningVisible] = useState(false);
   const [maintenanceWarningVisible, setMaintenanceWarningVisible] =
+    useState(false);
+  const [specialEventWarningVisible, setSpecialEventWarningVisible] =
     useState(false);
   const popoverContentRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -242,6 +274,28 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
+  // Listen for real-time updates on special events
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "special-events"),
+      (snapshot) => {
+        const oneWeekFromNow = moment().add(7, "days").toDate();
+        const upcomingEvent = snapshot.docs.find((doc) => {
+          const data = doc.data();
+          return (
+            !data.orderComplete &&
+            data.startTime &&
+            data.startTime.toDate() < oneWeekFromNow
+          );
+        });
+
+        setSpecialEventWarningVisible(!!upcomingEvent);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     fetchMaintenanceData();
   }, []);
@@ -343,6 +397,7 @@ const App = () => {
           toggleSider={() => setCollapsed(!collapsed)}
           maintenanceWarningVisible={maintenanceWarningVisible}
           safetyWarningVisible={safetyWarningVisible}
+          specialEventWarningVisible={specialEventWarningVisible}
         />
         <Content style={{ marginTop: "64px", padding: "20px" }}>
           <Popover
