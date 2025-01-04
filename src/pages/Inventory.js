@@ -147,19 +147,16 @@ const InventoryPage = () => {
           const isBelowPar = item.current < item.par;
           htmlContent += `
           <tr>
-            <td style="color: ${isBelowPar ? "red" : "black"}; font-weight: ${
-            isBelowPar ? "bold" : "normal"
-          }; padding: 8px;">${item.name}</td>
-            <td style="text-align: right; padding: 8px;">${item.par}</td>
-            <td style="color: ${isBelowPar ? "red" : "black"}; font-weight: ${
-            isBelowPar ? "bold" : "normal"
-          }; text-align: right; padding: 8px;">${item.current}</td>
-            <td style="text-align: left; padding: 8px;">${item.units}</td>
-            <td style="padding: 8px;">${item.notes || ""}</td>
-            <td style="padding: 8px;">${
-              item.supplier || "N/A"
-            }</td> <!-- Display Source -->
-          </tr>`;
+  <TableCell isBelowPar={isBelowPar}>{item.name}</TableCell>
+  <TableCell align="right">{item.par}</TableCell>
+  <TableCell isBelowPar={isBelowPar} align="right">
+    {item.current}
+  </TableCell>
+  <TableCell>{item.units}</TableCell>
+  <TableCell>{item.notes || ""}</TableCell>
+  <TableCell>{item.supplier || "N/A"}</TableCell>
+</tr>
+`;
         });
 
         htmlContent += `
@@ -227,7 +224,7 @@ const InventoryPage = () => {
     <PageContainer>
       {sortedCategories.map((category) => (
         <TableWrapper key={category}>
-          <h3>{category}</h3>
+          <h3 style={{ fontSize: "2rem" }}>{category}</h3>
           <Table
             dataSource={groupedData[category]}
             columns={[
@@ -239,6 +236,7 @@ const InventoryPage = () => {
                 render: (text, record) => (
                   <span
                     style={{
+                      fontSize: "1.5rem",
                       fontWeight:
                         record.current < record.par ? "bold" : "normal",
                       color: record.current < record.par ? "red" : "black",
@@ -253,6 +251,9 @@ const InventoryPage = () => {
                 dataIndex: "par",
                 key: "par",
                 width: "10%",
+                render: (text) => (
+                  <span style={{ fontSize: "1.5rem" }}>{text}</span>
+                ),
               },
               {
                 title: "Current",
@@ -263,6 +264,7 @@ const InventoryPage = () => {
                   <Input
                     type="number"
                     value={text}
+                    style={{ fontSize: "1.5rem" }}
                     onChange={(e) =>
                       handleCurrentChange(record.id, e.target.value)
                     }
@@ -274,6 +276,9 @@ const InventoryPage = () => {
                 dataIndex: "units",
                 key: "units",
                 width: "15%",
+                render: (text) => (
+                  <span style={{ fontSize: "1.5rem" }}>{text}</span>
+                ),
               },
             ]}
             rowKey="id"
