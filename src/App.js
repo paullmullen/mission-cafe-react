@@ -6,7 +6,7 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import { Layout, Menu, Button, Popover } from "antd";
+import { Layout, Button, Popover, Menu } from "antd";
 import routes from "./pages/routes";
 import {
   doc,
@@ -23,7 +23,7 @@ import styled from "styled-components"; // For styled components
 
 const { Header, Sider, Content } = Layout;
 
-// Styled Component for the warning capsule
+// Styled Component for the warning capsule (Maintenance)
 const WarningCapsule = styled(Link)`
   background-color: red;
   color: white;
@@ -45,7 +45,33 @@ const WarningCapsule = styled(Link)`
   }
 `;
 
-const AppHeader = ({ toggleSider, maintenanceWarningVisible }) => {
+// Styled Component for the warning capsule (Safety)
+const SafetyCapsule = styled(Link)`
+  background-color: orange;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  line-height: 40px;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: darkorange;
+  }
+`;
+
+const AppHeader = ({
+  toggleSider,
+  maintenanceWarningVisible,
+  safetyWarningVisible,
+}) => {
   const location = useLocation();
   const route = routes.find((r) => r.path === location.pathname);
   const title = route ? route.title : "App";
@@ -72,11 +98,16 @@ const AppHeader = ({ toggleSider, maintenanceWarningVisible }) => {
       />
       <span style={{ fontSize: "24px", fontWeight: "bold" }}>{title}</span>
 
-      {/* Render warning if maintenance tasks are due */}
+      {/* Maintenance Warning Button */}
       {maintenanceWarningVisible && (
         <WarningCapsule to="/maintenance">
           Maintenance Items are Due
         </WarningCapsule>
+      )}
+
+      {/* Safety Warning Button */}
+      {safetyWarningVisible && (
+        <SafetyCapsule to="/safetylog">Safety Items Incomplete</SafetyCapsule>
       )}
     </Header>
   );
@@ -89,6 +120,7 @@ const App = () => {
   const [message, setMessage] = useState("");
   const [timestamp, setTimestamp] = useState(null);
   const [maintenanceData, setMaintenanceData] = useState([]);
+  const [safetyWarningVisible, setSafetyWarningVisible] = useState(false);
   const [maintenanceWarningVisible, setMaintenanceWarningVisible] =
     useState(false);
   const popoverContentRef = useRef(null);
@@ -173,8 +205,45 @@ const App = () => {
       }
     );
 
-    // Cleanup the listener when the component unmounts
     return () => unsubscribe();
+  }, []);
+
+  // Listen for real-time updates on safety records
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "safety-record"),
+      (snapshot) => {
+        const today = moment().format("YYYY-MM-DD");
+        const todayRecord = snapshot.docs.find(
+          (doc) =>
+            moment(doc.data().date.seconds * 1000).format("YYYY-MM-DD") ===
+            today
+        );
+
+        if (todayRecord) {
+          const data = todayRecord.data();
+          const isIncomplete =
+            !data.measurements ||
+            data.measurements.some(
+              (measurement) => !measurement.value || measurement.value === ""
+            ) ||
+            !data.safetyTopic ||
+            data.safetyTopic === "" ||
+            !data.recordedBy ||
+            data.recordedBy === "";
+
+          setSafetyWarningVisible(isIncomplete);
+        } else {
+          setSafetyWarningVisible(true); // No record for today, so it's incomplete
+        }
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    fetchMaintenanceData();
   }, []);
 
   // Handle popover visibility for manager message
@@ -203,15 +272,10 @@ const App = () => {
 
     return () => {
       if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current); // Cleanup timeout
+        clearTimeout(timeoutRef.current);
       }
     };
   }, [timestamp]);
-
-  // Initial maintenance data fetch
-  useEffect(() => {
-    fetchMaintenanceData();
-  }, []);
 
   // Focus on popover content when it's visible
   useEffect(() => {
@@ -222,7 +286,7 @@ const App = () => {
 
   const closePopover = () => {
     setVisible(false);
-    setTimestamp(moment()); // Reset timestamp when closed
+    setTimestamp(moment());
   };
 
   // Popover content (manager's message)
@@ -243,6 +307,7 @@ const App = () => {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
+      {/* Sidebar */}
       <Sider
         collapsible
         collapsed={collapsed}
@@ -256,7 +321,6 @@ const App = () => {
           height: "calc(100vh - 64px)",
           background: "#001529",
           zIndex: 1000,
-          overflow: "hidden",
         }}
       >
         <Menu
@@ -273,31 +337,30 @@ const App = () => {
         </Menu>
       </Sider>
 
-      <Layout>
+      {/* Main Layout */}
+      <Layout style={{ marginLeft: collapsed ? 0 : 200 }}>
         <AppHeader
           toggleSider={() => setCollapsed(!collapsed)}
           maintenanceWarningVisible={maintenanceWarningVisible}
+          safetyWarningVisible={safetyWarningVisible}
         />
+        <Content style={{ marginTop: "64px", padding: "20px" }}>
+          <Popover
+            content={popoverContent}
+            title="Manager's Message"
+            open={visible}
+            onOpenChange={(newVisible) => {
+              setVisible(newVisible);
+              if (!newVisible) {
+                setTimestamp(moment());
+              }
+            }}
+            placement="top"
+          >
+            {/* Placeholder for content */}
+          </Popover>
 
-        <Popover
-          content={popoverContent}
-          title="Manager's Message"
-          open={visible}
-          onOpenChange={(newVisible) => {
-            setVisible(newVisible);
-            if (!newVisible) {
-              setTimestamp(moment());
-            }
-          }}
-          placement="top"
-          trigger="click"
-          overlayStyle={{
-            maxWidth: "80vw",
-            margin: "0 auto",
-          }}
-        />
-
-        <Content style={{ padding: "20px", marginTop: "64px" }}>
+          {/* Main Content */}
           <Routes>
             {routes.map((route) => (
               <Route
