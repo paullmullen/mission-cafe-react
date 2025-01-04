@@ -162,8 +162,7 @@ const Reference = () => {
           {/* Instructions Section */}
           {item.instructions && item.instructions.length > 0 && (
             <>
-              <StyledSubtitle>Instructions</StyledSubtitle>
-              <ol>
+              <span>
                 {item.instructions.map((instruction, index) => (
                   <StyledListItem
                     key={index}
@@ -172,7 +171,7 @@ const Reference = () => {
                     }}
                   />
                 ))}
-              </ol>
+              </span>
             </>
           )}
 
