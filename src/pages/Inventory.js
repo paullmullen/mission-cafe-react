@@ -146,17 +146,17 @@ const InventoryPage = () => {
         groupedData[category].forEach((item) => {
           const isBelowPar = item.current < item.par;
           htmlContent += `
-          <tr>
-  <TableCell isBelowPar={isBelowPar}>{item.name}</TableCell>
-  <TableCell align="right">{item.par}</TableCell>
-  <TableCell isBelowPar={isBelowPar} align="right">
-    {item.current}
-  </TableCell>
-  <TableCell>{item.units}</TableCell>
-  <TableCell>{item.notes || ""}</TableCell>
-  <TableCell>{item.supplier || "N/A"}</TableCell>
-</tr>
-`;
+  <tr>
+    <td style="color: ${isBelowPar ? "red" : "black"};">${item.name}</td>
+    <td align="right">${item.par}</td>
+    <td style="color: ${isBelowPar ? "red" : "black"};" align="right">${
+            item.current
+          }</td>
+    <td>${item.units}</td>
+    <td>${item.notes || ""}</td>
+    <td>${item.supplier || "N/A"}</td>
+  </tr>
+  `;
         });
 
         htmlContent += `
