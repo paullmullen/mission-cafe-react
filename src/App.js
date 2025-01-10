@@ -135,7 +135,7 @@ const AppHeader = ({
 
       {/* Special Event Warning Button */}
       {specialEventWarningVisible && (
-        <SpecialEventCapsule to="/specialeventlog">
+        <SpecialEventCapsule to="/specials">
           Special Event Coming Up
         </SpecialEventCapsule>
       )}
