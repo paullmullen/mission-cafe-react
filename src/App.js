@@ -124,19 +124,19 @@ const AppHeader = ({
       {/* Maintenance Warning Button */}
       {maintenanceWarningVisible && (
         <WarningCapsule to="/maintenance">
-          Maintenance Items are Due
+          Maintenance Due
         </WarningCapsule>
       )}
 
       {/* Safety Warning Button */}
       {safetyWarningVisible && (
-        <SafetyCapsule to="/safetylog">Safety Items Incomplete</SafetyCapsule>
+        <SafetyCapsule to="/safetylog">Safety Incomplete</SafetyCapsule>
       )}
 
       {/* Special Event Warning Button */}
       {specialEventWarningVisible && (
         <SpecialEventCapsule to="/specials">
-          Special Event Coming Up
+          Special Event Soon
         </SpecialEventCapsule>
       )}
     </Header>
