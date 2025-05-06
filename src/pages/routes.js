@@ -9,6 +9,7 @@ import Maintenance from "./Maintenance";
 import ManagerMessage from "./ManagerMessage";
 import FeedbackList from "./FeedbackList";
 import Associates from "./Associates";
+import DisplayUpload from "./DisplayUpload";
 
 const routes = [
   { path: "/", component: Recipes, title: "Recipes" },
@@ -25,6 +26,7 @@ const routes = [
     component: ManagerMessage,
     title: "Manager's Message",
   },
+  {path: "/displayupload", component: DisplayUpload, title: "Upload Menu Displays"},
   { path: "/associate", component: Associates, title: "Associates" },
 ];
 

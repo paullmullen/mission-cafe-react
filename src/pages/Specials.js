@@ -384,9 +384,12 @@ const Specials = () => {
                               ? event.startTime.toDate()
                               : event.startTime
                           ).toLocaleString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
                           })
                         ) : (
                           // Display formatted date
@@ -443,9 +446,12 @@ const Specials = () => {
                               ? event.endTime.toDate()
                               : event.endTime
                           ).toLocaleString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
                           }) // Display formatted date
                         ) : (
                           "No End Time"
