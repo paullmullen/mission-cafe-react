@@ -86,6 +86,7 @@ const Calculator = () => {
           type="number"
           value={counts[record.name]}
           onChange={(e) => handleChange(e, record.name)}
+          onFocus={(e) => e.target.select()} // Select all text on focus
           min={0}
           style={{ width: "80px", textAlign: "right", fontSize: "1.5rem" }}
         />
