@@ -10,9 +10,15 @@ import ManagerMessage from "./ManagerMessage";
 import FeedbackList from "./FeedbackList";
 import Associates from "./Associates";
 import DisplayUpload from "./DisplayUpload";
+import RecipeEditor from "./RecipeEditor";
 
 const routes = [
   { path: "/", component: Recipes, title: "Recipes" },
+    {
+    path: "/recipe-editor",
+    component: RecipeEditor,
+    title: "Recipe Editor",
+  },
   { path: "/reference", component: Reference, title: "Reference" },
   { path: "/checklists", component: Checklists, title: "Checklists" },
   { path: "/safetyLog", component: SafetyLog, title: "Safety Log" },
