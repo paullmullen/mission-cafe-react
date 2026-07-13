@@ -383,11 +383,13 @@ const App = () => {
           selectedKeys={[location.pathname]}
           onClick={() => setCollapsed(true)}
         >
-          {routes.map((route) => (
-            <Menu.Item key={route.path}>
-              <Link to={route.path}>{route.title}</Link>
-            </Menu.Item>
-          ))}
+          {routes
+            .filter((route) => route.showInMenu !== false)
+            .map((route) => (
+              <Menu.Item key={route.path}>
+                <Link to={route.path}>{route.title}</Link>
+              </Menu.Item>
+            ))}
         </Menu>
       </Sider>
 

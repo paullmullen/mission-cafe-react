@@ -15,9 +15,7 @@ import {
   Row,
   Space,
   Spin,
-  Table,
   Typography,
-  Upload,
   message,
 } from "antd";
 import {
@@ -28,9 +26,7 @@ import {
   getDocs,
   updateDoc,
 } from "firebase/firestore";
-import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
-import { UploadOutlined } from "@ant-design/icons";
-import { db, storage } from "../firebase/firebase";
+import { db } from "../firebase/firebase";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -87,7 +83,6 @@ const RecipeEditor = () => {
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   const selectedRecipe = useMemo(
@@ -264,36 +259,6 @@ const RecipeEditor = () => {
     }
   };
 
-  const uploadRecipeImage = async ({ file, onSuccess, onError }) => {
-    setUploadingImage(true);
-
-    try {
-      const extension = file.name?.split(".").pop() || "jpg";
-      const safeName = (form.getFieldValue("name") || "recipe")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-
-      const path = `recipe-images/${safeName || "recipe"}-${Date.now()}.${extension}`;
-      const imageRef = storageRef(storage, path);
-
-      await uploadBytes(imageRef, file);
-      const url = await getDownloadURL(imageRef);
-
-      form.setFieldValue("image", url);
-      setDirty(true);
-      message.success("Recipe image uploaded.");
-      onSuccess?.({ url });
-    } catch (error) {
-      console.error("Error uploading recipe image:", error);
-      message.error("The image could not be uploaded.");
-      onError?.(error);
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
   const removeRecipe = () => {
     if (!selectedId || !selectedRecipe) return;
 
@@ -329,20 +294,6 @@ const RecipeEditor = () => {
     form.setFieldValue(fieldName, reordered);
     setDirty(true);
   };
-
-  const actionButtons = (
-    <Space wrap>
-      <Button type="primary" loading={saving} onClick={saveRecipe}>
-        {selectedId ? "Save Recipe" : "Create Recipe"}
-      </Button>
-      <Button disabled={!form.getFieldValue("name")} onClick={duplicateRecipe}>
-        Duplicate
-      </Button>
-      <Button danger disabled={!selectedId} onClick={removeRecipe}>
-        Delete Recipe
-      </Button>
-    </Space>
-  );
 
   if (loading) {
     return (
@@ -433,17 +384,14 @@ const RecipeEditor = () => {
               </Text>
             </div>
 
-            <Space direction="vertical" align="end">
-              {actionButtons}
-              {dirty && (
-                <Alert
-                  type="warning"
-                  showIcon
-                  message="Unsaved changes"
-                  style={{ padding: "6px 12px" }}
-                />
-              )}
-            </Space>
+            {dirty && (
+              <Alert
+                type="warning"
+                showIcon
+                message="Unsaved changes"
+                style={{ padding: "6px 12px" }}
+              />
+            )}
           </div>
 
           <Divider />
@@ -486,52 +434,30 @@ const RecipeEditor = () => {
               </Col>
             </Row>
 
-            <Form.Item label="Recipe Image">
-              <Space direction="vertical" size={12}>
-                <Form.Item name="image" noStyle>
-                  <Input type="hidden" />
-                </Form.Item>
+            <Form.Item label="Image URL" name="image">
+              <Input placeholder="https://..." />
+            </Form.Item>
 
-                <Form.Item shouldUpdate noStyle>
-                  {() => {
-                    const imageUrl = form.getFieldValue("image");
-                    return imageUrl ? (
-                      <Image
-                        src={imageUrl}
-                        alt="Recipe preview"
-                        width={220}
-                        style={{ maxHeight: 260, objectFit: "cover", borderRadius: 8 }}
-                      />
-                    ) : (
-                      <Text type="secondary">No image uploaded.</Text>
-                    );
-                  }}
-                </Form.Item>
+            <Form.Item shouldUpdate noStyle>
+              {() => {
+                const imageUrl = form.getFieldValue("image");
 
-                <Upload accept="image/*" showUploadList={false} customRequest={uploadRecipeImage}>
-                  <Button icon={<UploadOutlined />} loading={uploadingImage}>
-                    {form.getFieldValue("image") ? "Upload New Image" : "Upload Image"}
-                  </Button>
-                </Upload>
-
-                <Form.Item shouldUpdate noStyle>
-                  {() =>
-                    form.getFieldValue("image") ? (
-                      <Button
-                        type="link"
-                        danger
-                        style={{ padding: 0 }}
-                        onClick={() => {
-                          form.setFieldValue("image", "");
-                          setDirty(true);
-                        }}
-                      >
-                        Remove image from recipe
-                      </Button>
-                    ) : null
-                  }
-                </Form.Item>
-              </Space>
+                return imageUrl ? (
+                  <div style={{ marginBottom: 24 }}>
+                    <Image
+                      src={imageUrl}
+                      alt="Recipe preview"
+                      width={220}
+                      style={{
+                        maxHeight: 260,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                      }}
+                      fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='140'%3E%3Crect width='100%25' height='100%25' fill='%23f5f5f5'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle' fill='%23999'%3EImage unavailable%3C/text%3E%3C/svg%3E"
+                    />
+                  </div>
+                ) : null;
+              }}
             </Form.Item>
 
             <Form.Item
@@ -548,64 +474,91 @@ const RecipeEditor = () => {
             <Divider orientation="left">Ingredients</Divider>
 
             <Form.List name="ingredients">
-              {(fields, { add, remove }) => {
-                const columns = [
-                  {
-                    title: "Ingredient",
-                    width: "28%",
-                    render: (_, field) => (
-                      <Form.Item name={[field.name, "ingredientName"]} style={{ marginBottom: 0 }}>
-                        <Input placeholder="Ingredient name" />
-                      </Form.Item>
-                    ),
-                  },
-                  {
-                    title: "Sizes",
-                    width: "28%",
-                    render: (_, field) => (
-                      <Form.Item name={[field.name, "ingredientSizes"]} style={{ marginBottom: 0 }}>
-                        <Input placeholder="Small, Medium, Large or All Sizes" />
-                      </Form.Item>
-                    ),
-                  },
-                  {
-                    title: "Amounts",
-                    width: "30%",
-                    render: (_, field) => (
-                      <Form.Item name={[field.name, "ingredientAmounts"]} style={{ marginBottom: 0 }}>
-                        <Input placeholder="1 tsp, 2 tsp, 3 tsp or Fill to top" />
-                      </Form.Item>
-                    ),
-                  },
-                  {
-                    title: "",
-                    width: "14%",
-                    render: (_, field, index) => (
-                      <Space size="small">
-                        <Button size="small" disabled={index === 0} onClick={() => moveListItem("ingredients", index, index - 1)}>↑</Button>
-                        <Button size="small" disabled={index === fields.length - 1} onClick={() => moveListItem("ingredients", index, index + 1)}>↓</Button>
-                        <Button size="small" danger onClick={() => { remove(field.name); setDirty(true); }}>Delete</Button>
-                      </Space>
-                    ),
-                  },
-                ];
-
-                return (
-                  <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                    <Table
+              {(fields, { add, remove }) => (
+                <Space
+                  direction="vertical"
+                  size={16}
+                  style={{ width: "100%" }}
+                >
+                  {fields.map((field, index) => (
+                    <Card
+                      key={field.key}
                       size="small"
-                      pagination={false}
-                      rowKey="key"
-                      columns={columns}
-                      dataSource={fields}
-                      scroll={{ x: 850 }}
-                    />
-                    <Button type="dashed" block onClick={() => { add(blankIngredient()); setDirty(true); }}>
-                      Add Ingredient
-                    </Button>
-                  </Space>
-                );
-              }}
+                      title={`Ingredient ${index + 1}`}
+                      extra={
+                        <Space wrap>
+                          <Button
+                            size="small"
+                            disabled={index === 0}
+                            onClick={() =>
+                              moveListItem("ingredients", index, index - 1)
+                            }
+                          >
+                            Up
+                          </Button>
+                          <Button
+                            size="small"
+                            disabled={index === fields.length - 1}
+                            onClick={() =>
+                              moveListItem("ingredients", index, index + 1)
+                            }
+                          >
+                            Down
+                          </Button>
+                          <Button
+                            size="small"
+                            danger
+                            onClick={() => {
+                              remove(field.name);
+                              setDirty(true);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </Space>
+                      }
+                    >
+                      <Form.Item
+                        label="Ingredient Name"
+                        name={[field.name, "ingredientName"]}
+                      >
+                        <Input placeholder="Ice" />
+                      </Form.Item>
+
+                      <Row gutter={16}>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            label="Sizes"
+                            name={[field.name, "ingredientSizes"]}
+                          >
+                            <Input placeholder="Small, Medium, Large or All Sizes" />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            label="Amounts"
+                            name={[field.name, "ingredientAmounts"]}
+                          >
+                            <Input placeholder="1 tsp, 2 tsp, 3 tsp or Fill to top of cup" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </Card>
+                  ))}
+
+                  <Button
+                    type="dashed"
+                    block
+                    onClick={() => {
+                      add(blankIngredient());
+                      setDirty(true);
+                    }}
+                  >
+                    Add Ingredient
+                  </Button>
+                </Space>
+              )}
             </Form.List>
 
             <Divider orientation="left">Instructions</Divider>
@@ -691,7 +644,33 @@ const RecipeEditor = () => {
 
             <Divider />
 
-            {actionButtons}
+            <Space wrap>
+              <Button
+                type="primary"
+                size="large"
+                loading={saving}
+                onClick={saveRecipe}
+              >
+                {selectedId ? "Save Recipe" : "Create Recipe"}
+              </Button>
+
+              <Button
+                size="large"
+                disabled={!form.getFieldValue("name")}
+                onClick={duplicateRecipe}
+              >
+                Duplicate
+              </Button>
+
+              <Button
+                danger
+                size="large"
+                disabled={!selectedId}
+                onClick={removeRecipe}
+              >
+                Delete Recipe
+              </Button>
+            </Space>
           </Form>
         </Card>
       </Col>
