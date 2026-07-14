@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Card,
   Col,
+  Collapse,
   Divider,
   Empty,
   Form,
@@ -31,6 +32,16 @@ import { db } from "../firebase/firebase";
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
+const blankInventoryItem = (category = "") => ({
+  name: "",
+  category,
+  supplier: "",
+  units: "",
+  notes: "",
+  par: 0,
+  current: 0,
+});
+
 const normalizeInventoryItem = (id, data = {}) => ({
   id,
   name: data.name || "",
@@ -44,22 +55,39 @@ const normalizeInventoryItem = (id, data = {}) => ({
     : Number(data.current || 0),
 });
 
-const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
+const InventorySetupTab = ({
+  categoryRecords,
+  supplierRecords,
+  reloadCategoriesAndSuppliers,
+}) => {
   const [form] = Form.useForm();
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const editorRef = useRef(null);
+  const listScrollRef = useRef(null);
+  const pendingScrollTopRef = useRef(null);
+
+  const categoryNames = categoryRecords.map((record) => record.value);
+  const supplierNames = supplierRecords.map((record) => record.value);
 
   const loadItems = async (preferredId = null) => {
+    if (listScrollRef.current) {
+      pendingScrollTopRef.current = listScrollRef.current.scrollTop;
+    }
+
     setLoading(true);
 
     try {
       const snapshot = await getDocs(collection(db, "inventory"));
       const loaded = snapshot.docs
         .map((itemDoc) => normalizeInventoryItem(itemDoc.id, itemDoc.data()))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => {
+          const categoryCompare = a.category.localeCompare(b.category);
+          return categoryCompare || a.name.localeCompare(b.name);
+        });
 
       setItems(loaded);
 
@@ -73,17 +101,19 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
       if (nextId) {
         form.setFieldsValue(loaded.find((item) => item.id === nextId));
       } else {
-        form.resetFields();
-        form.setFieldsValue({
-          name: "",
-          category: "",
-          supplier: "",
-          units: "",
-          notes: "",
-          par: 0,
-          current: 0,
-        });
+        form.setFieldsValue(blankInventoryItem());
       }
+
+      window.requestAnimationFrame(() => {
+        if (
+          listScrollRef.current &&
+          pendingScrollTopRef.current !== null
+        ) {
+          listScrollRef.current.scrollTop =
+            pendingScrollTopRef.current;
+          pendingScrollTopRef.current = null;
+        }
+      });
     } catch (error) {
       console.error(error);
       message.error("Inventory items could not be loaded.");
@@ -97,29 +127,24 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filteredItems = useMemo(() => {
-    const needle = searchText.trim().toLowerCase();
-    if (!needle) return items;
-    return items.filter((item) => item.name.toLowerCase().includes(needle));
-  }, [items, searchText]);
-
   const openItem = (item) => {
     setSelectedId(item.id);
     form.setFieldsValue(item);
+
+    if (window.innerWidth < 992) {
+      window.setTimeout(() => {
+        editorRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 0);
+    }
   };
 
-  const newItem = () => {
+  const newItem = (category = "") => {
     setSelectedId(null);
     form.resetFields();
-    form.setFieldsValue({
-      name: "",
-      category: "",
-      supplier: "",
-      units: "",
-      notes: "",
-      par: 0,
-      current: 0,
-    });
+    form.setFieldsValue(blankInventoryItem(category));
   };
 
   const saveItem = async () => {
@@ -149,8 +174,6 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
         message.success("Inventory item created.");
         await loadItems(newDoc.id);
       }
-
-      await refreshLists();
     } catch (error) {
       if (error?.errorFields) return;
       console.error(error);
@@ -163,6 +186,7 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
   const duplicateItem = async () => {
     try {
       const values = await form.validateFields();
+
       const newDoc = await addDoc(collection(db, "inventory"), {
         name: `${values.name.trim()} Copy`,
         category: values.category || "",
@@ -175,7 +199,6 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
 
       message.success("Inventory item duplicated.");
       await loadItems(newDoc.id);
-      await refreshLists();
     } catch (error) {
       if (error?.errorFields) return;
       console.error(error);
@@ -197,10 +220,157 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
         await deleteDoc(doc(db, "inventory", selectedId));
         message.success("Inventory item deleted.");
         await loadItems();
-        await refreshLists();
       },
     });
   };
+
+  const addCategory = () => {
+    let categoryName = "";
+
+    Modal.confirm({
+      title: "New Category",
+      content: (
+        <Input
+          autoFocus
+          placeholder="Category name"
+          onChange={(event) => {
+            categoryName = event.target.value;
+          }}
+        />
+      ),
+      okText: "Add Category",
+      onOk: async () => {
+        const trimmed = categoryName.trim();
+
+        if (!trimmed) {
+          message.warning("Enter a category name.");
+          return Promise.reject();
+        }
+
+        if (
+          categoryRecords.some(
+            (record) => record.value.toLowerCase() === trimmed.toLowerCase()
+          )
+        ) {
+          message.warning("That category already exists.");
+          return Promise.reject();
+        }
+
+        await addDoc(collection(db, "inventoryCategories"), {
+          name: trimmed,
+        });
+
+        await reloadCategoriesAndSuppliers();
+        message.success("Category added.");
+      },
+    });
+  };
+
+  const renameCategory = (record) => {
+    let nextName = record.value;
+
+    Modal.confirm({
+      title: `Rename "${record.value}"`,
+      content: (
+        <Input
+          defaultValue={record.value}
+          onChange={(event) => {
+            nextName = event.target.value;
+          }}
+        />
+      ),
+      okText: "Rename",
+      onOk: async () => {
+        const trimmed = nextName.trim();
+
+        if (!trimmed) {
+          message.warning("Enter a category name.");
+          return Promise.reject();
+        }
+
+        await updateDoc(doc(db, "inventoryCategories", record.id), {
+          name: trimmed,
+        });
+
+        const affectedItems = items.filter(
+          (item) => item.category === record.value
+        );
+
+        await Promise.all(
+          affectedItems.map((item) =>
+            updateDoc(doc(db, "inventory", item.id), {
+              category: trimmed,
+            })
+          )
+        );
+
+        await Promise.all([
+          reloadCategoriesAndSuppliers(),
+          loadItems(selectedId),
+        ]);
+
+        message.success("Category renamed.");
+      },
+    });
+  };
+
+  const deleteCategory = (record) => {
+    const usedBy = items.filter((item) => item.category === record.value);
+
+    if (usedBy.length > 0) {
+      message.warning(
+        `Move or delete the ${usedBy.length} item(s) in this category first.`
+      );
+      return;
+    }
+
+    Modal.confirm({
+      title: `Delete "${record.value}"?`,
+      content: "This deletes the category from Inventory Setup.",
+      okText: "Delete",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await deleteDoc(doc(db, "inventoryCategories", record.id));
+        await reloadCategoriesAndSuppliers();
+        message.success("Category deleted.");
+      },
+    });
+  };
+
+  const groupedItems = useMemo(() => {
+    const needle = searchText.trim().toLowerCase();
+
+    return categoryRecords.map((category) => {
+      const categoryItems = items
+        .filter((item) => item.category === category.value)
+        .filter((item) => {
+          if (!needle) return true;
+          return item.name.toLowerCase().includes(needle);
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      return {
+        category,
+        items: categoryItems,
+      };
+    });
+  }, [categoryRecords, items, searchText]);
+
+  const uncategorizedItems = useMemo(() => {
+    const managedCategories = new Set(categoryNames);
+    const needle = searchText.trim().toLowerCase();
+
+    return items
+      .filter(
+        (item) =>
+          !item.category || !managedCategories.has(item.category)
+      )
+      .filter((item) => {
+        if (!needle) return true;
+        return item.name.toLowerCase().includes(needle);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [categoryNames, items, searchText]);
 
   if (loading) {
     return (
@@ -210,57 +380,141 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
     );
   }
 
+  const collapseItems = groupedItems.map(({ category, items: categoryItems }) => ({
+    key: category.id,
+    label: (
+      <Text strong>{category.value}</Text>
+    ),
+    extra: (
+      <Space
+        onClick={(event) => event.stopPropagation()}
+        wrap
+      >
+        <Button size="small" onClick={() => newItem(category.value)}>
+          Add Item
+        </Button>
+        <Button size="small" onClick={() => renameCategory(category)}>
+          Rename
+        </Button>
+        <Button
+          size="small"
+          danger
+          onClick={() => deleteCategory(category)}
+        >
+          Delete
+        </Button>
+      </Space>
+    ),
+    children:
+      categoryItems.length === 0 ? (
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description="No items in this category"
+        />
+      ) : (
+        <List
+          size="small"
+          dataSource={categoryItems}
+          renderItem={(item) => (
+            <List.Item
+              onClick={() => openItem(item)}
+              style={{
+                cursor: "pointer",
+                padding: "10px 12px",
+                borderRadius: 6,
+                background:
+                  item.id === selectedId ? "#e6f4ff" : "transparent",
+              }}
+            >
+              {item.name}
+            </List.Item>
+          )}
+        />
+      ),
+  }));
+
+  if (uncategorizedItems.length > 0) {
+    collapseItems.push({
+      key: "uncategorized",
+      label: <Text strong>Uncategorized</Text>,
+      children: (
+        <List
+          size="small"
+          dataSource={uncategorizedItems}
+          renderItem={(item) => (
+            <List.Item
+              onClick={() => openItem(item)}
+              style={{
+                cursor: "pointer",
+                padding: "10px 12px",
+                borderRadius: 6,
+                background:
+                  item.id === selectedId ? "#e6f4ff" : "transparent",
+              }}
+            >
+              {item.name}
+            </List.Item>
+          )}
+        />
+      ),
+    });
+  }
+
   return (
-    <Row gutter={[20, 20]}>
-      <Col xs={24} lg={7}>
+    <Row gutter={[20, 20]} align="top">
+      <Col xs={24} lg={9}>
         <Card
-          title="Inventory Items"
+          title="Inventory Setup"
           extra={
-            <Button type="primary" onClick={newItem}>
-              New Item
-            </Button>
+            <Space>
+              <Button onClick={addCategory}>New Category</Button>
+              <Button type="primary" onClick={() => newItem()}>
+                New Item
+              </Button>
+            </Space>
           }
         >
+          <div
+            ref={listScrollRef}
+            style={{
+              maxHeight: "calc(100vh - 230px)",
+              overflowY: "auto",
+              paddingRight: 4,
+            }}
+          >
           <Input.Search
             allowClear
-            placeholder="Search items"
+            placeholder="Search inventory items"
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: 16 }}
           />
 
-          {filteredItems.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          {collapseItems.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="Create a category to get started"
+            />
           ) : (
-            <List
-              size="small"
-              dataSource={filteredItems}
-              style={{ maxHeight: "60vh", overflowY: "auto" }}
-              renderItem={(item) => (
-                <List.Item
-                  onClick={() => openItem(item)}
-                  style={{
-                    cursor: "pointer",
-                    padding: "10px 12px",
-                    borderRadius: 6,
-                    background:
-                      item.id === selectedId ? "#e6f4ff" : "transparent",
-                  }}
-                >
-                  <div>
-                    <Text strong={item.id === selectedId}>{item.name}</Text>
-                    <br />
-                    <Text type="secondary">{item.category}</Text>
-                  </div>
-                </List.Item>
-              )}
+            <Collapse
+              items={collapseItems}
+              defaultActiveKey={collapseItems.map((item) => item.key)}
             />
           )}
+          </div>
         </Card>
       </Col>
 
-      <Col xs={24} lg={17}>
-        <Card>
+      <Col xs={24} lg={15}>
+        <div
+          ref={editorRef}
+          style={{
+            position: "sticky",
+            top: 84,
+            scrollMarginTop: 84,
+          }}
+        >
+          <Card>
           <Title level={3} style={{ marginTop: 0 }}>
             {selectedId ? "Edit Inventory Item" : "New Inventory Item"}
           </Title>
@@ -269,19 +523,33 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
             <Form.Item
               label="Item Name"
               name="name"
-              rules={[{ required: true, whitespace: true }]}
+              rules={[
+                {
+                  required: true,
+                  whitespace: true,
+                  message: "Enter an item name.",
+                },
+              ]}
             >
               <Input />
             </Form.Item>
 
             <Row gutter={16}>
               <Col xs={24} md={12}>
-                <Form.Item label="Category" name="category">
+                <Form.Item
+                  label="Category"
+                  name="category"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Select a category.",
+                    },
+                  ]}
+                >
                   <Select
-                    allowClear
                     showSearch
                     placeholder="Select category"
-                    options={categories.map((name) => ({
+                    options={categoryNames.map((name) => ({
                       label: name,
                       value: name,
                     }))}
@@ -295,7 +563,7 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
                     allowClear
                     showSearch
                     placeholder="Select supplier"
-                    options={suppliers.map((name) => ({
+                    options={supplierNames.map((name) => ({
                       label: name,
                       value: name,
                     }))}
@@ -335,133 +603,144 @@ const InventoryItemsTab = ({ categories, suppliers, refreshLists }) => {
             <Divider />
 
             <Space wrap>
-              <Button type="primary" loading={saving} onClick={saveItem}>
+              <Button
+                type="primary"
+                loading={saving}
+                onClick={saveItem}
+              >
                 {selectedId ? "Save Item" : "Create Item"}
               </Button>
               <Button onClick={duplicateItem}>Duplicate</Button>
-              <Button danger disabled={!selectedId} onClick={removeItem}>
+              <Button
+                danger
+                disabled={!selectedId}
+                onClick={removeItem}
+              >
                 Delete
               </Button>
             </Space>
           </Form>
-        </Card>
+          </Card>
+        </div>
       </Col>
     </Row>
   );
 };
 
-const SimpleListManager = ({
-  title,
-  collectionName,
-  fieldName,
-  values,
-  reload,
-  usageField,
-}) => {
-  const [newValue, setNewValue] = useState("");
+const SuppliersTab = ({ supplierRecords, reload }) => {
+  const [newSupplier, setNewSupplier] = useState("");
 
-  const addValue = async () => {
-    const trimmed = newValue.trim();
+  const addSupplier = async () => {
+    const trimmed = newSupplier.trim();
     if (!trimmed) return;
 
-    if (values.some((value) => value.toLowerCase() === trimmed.toLowerCase())) {
-      message.warning(`${title.slice(0, -1)} already exists.`);
+    if (
+      supplierRecords.some(
+        (record) => record.value.toLowerCase() === trimmed.toLowerCase()
+      )
+    ) {
+      message.warning("That supplier already exists.");
       return;
     }
 
-    await addDoc(collection(db, collectionName), {
-      [fieldName]: trimmed,
+    await addDoc(collection(db, "inventorySuppliers"), {
+      name: trimmed,
     });
 
-    setNewValue("");
+    setNewSupplier("");
     await reload();
-    message.success(`${title.slice(0, -1)} added.`);
+    message.success("Supplier added.");
   };
 
-  const renameValue = (record) => {
-    let nextValue = record.value;
+  const renameSupplier = (record) => {
+    let nextName = record.value;
 
     Modal.confirm({
-      title: `Rename ${title.slice(0, -1)}`,
+      title: `Rename "${record.value}"`,
       content: (
         <Input
           defaultValue={record.value}
           onChange={(event) => {
-            nextValue = event.target.value;
+            nextName = event.target.value;
           }}
         />
       ),
-      okText: "Save",
+      okText: "Rename",
       onOk: async () => {
-        const trimmed = nextValue.trim();
+        const trimmed = nextName.trim();
         if (!trimmed) return Promise.reject();
 
-        await updateDoc(doc(db, collectionName, record.id), {
-          [fieldName]: trimmed,
+        await updateDoc(doc(db, "inventorySuppliers", record.id), {
+          name: trimmed,
         });
 
-        if (usageField) {
-          const inventorySnapshot = await getDocs(collection(db, "inventory"));
-          const updates = inventorySnapshot.docs
-            .filter((itemDoc) => itemDoc.data()[usageField] === record.value)
-            .map((itemDoc) =>
-              updateDoc(doc(db, "inventory", itemDoc.id), {
-                [usageField]: trimmed,
-              })
-            );
-          await Promise.all(updates);
-        }
+        const snapshot = await getDocs(collection(db, "inventory"));
+        const affected = snapshot.docs.filter(
+          (itemDoc) => itemDoc.data().supplier === record.value
+        );
+
+        await Promise.all(
+          affected.map((itemDoc) =>
+            updateDoc(doc(db, "inventory", itemDoc.id), {
+              supplier: trimmed,
+            })
+          )
+        );
 
         await reload();
-        message.success(`${title.slice(0, -1)} renamed.`);
+        message.success("Supplier renamed.");
       },
     });
   };
 
-  const deleteValue = (record) => {
+  const deleteSupplier = (record) => {
     Modal.confirm({
       title: `Delete "${record.value}"?`,
       content:
-        "Existing inventory items will keep their current text value unless you change them.",
+        "Existing inventory items will retain this supplier until edited.",
       okText: "Delete",
       okButtonProps: { danger: true },
       onOk: async () => {
-        await deleteDoc(doc(db, collectionName, record.id));
+        await deleteDoc(doc(db, "inventorySuppliers", record.id));
         await reload();
-        message.success(`${title.slice(0, -1)} deleted.`);
+        message.success("Supplier deleted.");
       },
     });
   };
 
   return (
-    <Card title={title}>
+    <Card title="Suppliers">
       <Space.Compact style={{ width: "100%", marginBottom: 16 }}>
         <Input
-          value={newValue}
-          placeholder={`New ${title.slice(0, -1).toLowerCase()}`}
-          onChange={(event) => setNewValue(event.target.value)}
-          onPressEnter={addValue}
+          value={newSupplier}
+          placeholder="New supplier"
+          onChange={(event) => setNewSupplier(event.target.value)}
+          onPressEnter={addSupplier}
         />
-        <Button type="primary" onClick={addValue}>
+        <Button type="primary" onClick={addSupplier}>
           Add
         </Button>
       </Space.Compact>
 
       <List
         bordered
-        dataSource={values}
-        locale={{ emptyText: `No ${title.toLowerCase()} yet` }}
+        dataSource={supplierRecords}
+        locale={{ emptyText: "No suppliers yet" }}
         renderItem={(record) => (
           <List.Item
             actions={[
-              <Button key="rename" type="link" onClick={() => renameValue(record)}>
+              <Button
+                key="rename"
+                type="link"
+                onClick={() => renameSupplier(record)}
+              >
                 Rename
               </Button>,
               <Button
                 key="delete"
                 type="link"
                 danger
-                onClick={() => deleteValue(record)}
+                onClick={() => deleteSupplier(record)}
               >
                 Delete
               </Button>,
@@ -625,7 +904,11 @@ const ReportRecipientsTab = () => {
               <Button type="primary" onClick={saveRecipient}>
                 {selectedId ? "Save" : "Add"}
               </Button>
-              <Button danger disabled={!selectedId} onClick={deleteRecipient}>
+              <Button
+                danger
+                disabled={!selectedId}
+                onClick={deleteRecipient}
+              >
                 Delete
               </Button>
             </Space>
@@ -641,7 +924,7 @@ const InventoryAdmin = () => {
   const [supplierRecords, setSupplierRecords] = useState([]);
   const [loadingLists, setLoadingLists] = useState(true);
 
-  const loadManagedLists = async () => {
+  const loadCategoriesAndSuppliers = async () => {
     setLoadingLists(true);
 
     try {
@@ -650,14 +933,43 @@ const InventoryAdmin = () => {
         getDocs(collection(db, "inventorySuppliers")),
       ]);
 
-      setCategoryRecords(
-        categorySnapshot.docs
+      let categories = categorySnapshot.docs
+        .map((itemDoc) => ({
+          id: itemDoc.id,
+          value: itemDoc.data().name || "",
+        }))
+        .filter((item) => item.value);
+
+      if (categories.length === 0) {
+        const inventorySnapshot = await getDocs(collection(db, "inventory"));
+        const existingNames = [
+          ...new Set(
+            inventorySnapshot.docs
+              .map((itemDoc) => String(itemDoc.data().category || "").trim())
+              .filter(Boolean)
+          ),
+        ];
+
+        await Promise.all(
+          existingNames.map((name) =>
+            addDoc(collection(db, "inventoryCategories"), { name })
+          )
+        );
+
+        const refreshedCategories = await getDocs(
+          collection(db, "inventoryCategories")
+        );
+
+        categories = refreshedCategories.docs
           .map((itemDoc) => ({
             id: itemDoc.id,
             value: itemDoc.data().name || "",
           }))
-          .filter((item) => item.value)
-          .sort((a, b) => a.value.localeCompare(b.value))
+          .filter((item) => item.value);
+      }
+
+      setCategoryRecords(
+        categories.sort((a, b) => a.value.localeCompare(b.value))
       );
 
       setSupplierRecords(
@@ -674,45 +986,8 @@ const InventoryAdmin = () => {
     }
   };
 
-  const importExistingValues = async () => {
-    const snapshot = await getDocs(collection(db, "inventory"));
-    const categories = new Set();
-    const suppliers = new Set();
-
-    snapshot.docs.forEach((itemDoc) => {
-      const data = itemDoc.data();
-      if (data.category?.trim()) categories.add(data.category.trim());
-      if (data.supplier?.trim()) suppliers.add(data.supplier.trim());
-    });
-
-    const existingCategories = new Set(
-      categoryRecords.map((record) => record.value.toLowerCase())
-    );
-    const existingSuppliers = new Set(
-      supplierRecords.map((record) => record.value.toLowerCase())
-    );
-
-    const writes = [];
-
-    categories.forEach((name) => {
-      if (!existingCategories.has(name.toLowerCase())) {
-        writes.push(addDoc(collection(db, "inventoryCategories"), { name }));
-      }
-    });
-
-    suppliers.forEach((name) => {
-      if (!existingSuppliers.has(name.toLowerCase())) {
-        writes.push(addDoc(collection(db, "inventorySuppliers"), { name }));
-      }
-    });
-
-    await Promise.all(writes);
-    await loadManagedLists();
-    message.success("Existing categories and suppliers imported.");
-  };
-
   useEffect(() => {
-    loadManagedLists();
+    loadCategoriesAndSuppliers();
   }, []);
 
   if (loadingLists) {
@@ -723,32 +998,15 @@ const InventoryAdmin = () => {
     );
   }
 
-  const categoryNames = categoryRecords.map((record) => record.value);
-  const supplierNames = supplierRecords.map((record) => record.value);
-
   const tabItems = [
     {
-      key: "items",
-      label: "Inventory Items",
+      key: "inventory",
+      label: "Inventory Setup",
       children: (
-        <InventoryItemsTab
-          categories={categoryNames}
-          suppliers={supplierNames}
-          refreshLists={loadManagedLists}
-        />
-      ),
-    },
-    {
-      key: "categories",
-      label: "Categories",
-      children: (
-        <SimpleListManager
-          title="Categories"
-          collectionName="inventoryCategories"
-          fieldName="name"
-          values={categoryRecords}
-          reload={loadManagedLists}
-          usageField="category"
+        <InventorySetupTab
+          categoryRecords={categoryRecords}
+          supplierRecords={supplierRecords}
+          reloadCategoriesAndSuppliers={loadCategoriesAndSuppliers}
         />
       ),
     },
@@ -756,13 +1014,9 @@ const InventoryAdmin = () => {
       key: "suppliers",
       label: "Suppliers",
       children: (
-        <SimpleListManager
-          title="Suppliers"
-          collectionName="inventorySuppliers"
-          fieldName="name"
-          values={supplierRecords}
-          reload={loadManagedLists}
-          usageField="supplier"
+        <SuppliersTab
+          supplierRecords={supplierRecords}
+          reload={loadCategoriesAndSuppliers}
         />
       ),
     },
@@ -775,27 +1029,13 @@ const InventoryAdmin = () => {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 16,
-          flexWrap: "wrap",
-          marginBottom: 16,
-        }}
-      >
-        <div>
-          <Title level={2} style={{ marginBottom: 4 }}>
-            Inventory Administration
-          </Title>
-          <Text type="secondary">
-            Current on-hand quantities remain editable only on the regular Inventory page.
-          </Text>
-        </div>
-
-        <Button onClick={importExistingValues}>
-          Import Existing Categories and Suppliers
-        </Button>
+      <div style={{ marginBottom: 16 }}>
+        <Title level={2} style={{ marginBottom: 4 }}>
+          Inventory Administration
+        </Title>
+        <Text type="secondary">
+          Configure inventory items, categories, suppliers, and report recipients.
+        </Text>
       </div>
 
       <Tabs items={tabItems} />
