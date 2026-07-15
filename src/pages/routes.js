@@ -12,6 +12,7 @@ import Associates from "./Associates";
 import AdminHome from "./AdminHome";
 import RecipeEditor from "./RecipeEditor";
 import InventoryAdmin from "./InventoryAdmin";
+import MaintenanceAdmin from "./MaintenanceAdmin";
 import ManagerMessage from "./ManagerMessage";
 import DisplayUpload from "./DisplayUpload";
 import AdminGuard from "../components/admin/AdminGuard";
@@ -44,6 +45,12 @@ const routes = [
     path: "/admin/inventory",
     component: protect(InventoryAdmin),
     title: "Inventory Administration",
+    showInMenu: false,
+  },
+  {
+    path: "/admin/maintenance",
+    component: protect(MaintenanceAdmin),
+    title: "Maintenance Setup",
     showInMenu: false,
   },
   {

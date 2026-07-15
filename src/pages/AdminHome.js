@@ -25,6 +25,11 @@ const AdminHome = () => {
       path: "/admin/inventory",
     },
     {
+      title: "Maintenance",
+      description: "Maintain recurring tasks, intervals, and instructions.",
+      path: "/admin/maintenance",
+    },
+    {
       title: "Manager's Message",
       description: "Update the message displayed to café staff.",
       path: "/admin/message",
